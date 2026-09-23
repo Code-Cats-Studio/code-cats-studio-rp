@@ -1,7 +1,8 @@
 ---
 import BaseLayout from './BaseLayout.astro';
-import Sidebar from '../components/course/Sidebar.astro';
-import LessonNav from '../components/course/LessonNav.astro';
+import Sidebar from '../components/course/Sidebar';
+import LessonNav from '../components/course/LessonNav';
+import CompleteButton from '../components/course/CompleteButton';
 
 interface Lesson {
   slug: string;
@@ -82,6 +83,7 @@ const typeColors: Record<string, string> = {
 <BaseLayout title={`${title} — ${courseTitle}`} description={description}>
   <div class="flex min-h-screen">
     <Sidebar
+      client:load
       courseSlug={courseSlug}
       courseTitle={courseTitle}
       sections={sections}
@@ -129,15 +131,13 @@ const typeColors: Record<string, string> = {
         </div>
 
         <div class="mt-8 pt-6" style="border-top: 1px solid var(--border);">
-          <button
-            id="complete-btn"
-            onclick={`markComplete('${currentSection}/${currentLesson}')`}
-            class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150"
-            style="background: var(--bg-secondary); border: 1.5px solid var(--border); color: var(--text-secondary); font-family: var(--font-heading); cursor: pointer;"
-          >
-            <span id="complete-icon">○</span>
-            <span id="complete-text">Marcar como completada</span>
-          </button>
+          <CompleteButton
+            client:load
+            lessonId={`${currentSection}/${currentLesson}`}
+            courseSlug={courseSlug}
+            sectionSlug={currentSection}
+            lessonSlug={currentLesson}
+          />
         </div>
 
         <LessonNav prev={prev} next={next} />
@@ -151,49 +151,6 @@ const typeColors: Record<string, string> = {
     </div>
   </div>
 </BaseLayout>
-
-<script>
-  function markComplete(lessonId: string) {
-    const completed: string[] = JSON.parse(localStorage.getItem('gatuno-completed') || '[]');
-    const btn = document.getElementById('complete-btn');
-    const icon = document.getElementById('complete-icon');
-    const text = document.getElementById('complete-text');
-
-    if (completed.includes(lessonId)) {
-      const updated = completed.filter((id: string) => id !== lessonId);
-      localStorage.setItem('gatuno-completed', JSON.stringify(updated));
-      if (btn) { btn.style.background = 'var(--bg-secondary)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text-secondary)'; }
-      if (icon) icon.textContent = '○';
-      if (text) text.textContent = 'Marcar como completada';
-    } else {
-      completed.push(lessonId);
-      localStorage.setItem('gatuno-completed', JSON.stringify(completed));
-      if (btn) { btn.style.background = 'var(--success)'; btn.style.borderColor = 'var(--success)'; btn.style.color = 'white'; }
-      if (icon) icon.textContent = '✓';
-      if (text) text.textContent = '¡Lección completada!';
-    }
-    document.dispatchEvent(new CustomEvent('lesson-completed'));
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const path = window.location.pathname;
-    const parts = path.split('/').filter(Boolean);
-    if (parts.length >= 3) {
-      const lessonId = `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
-      const completed = JSON.parse(localStorage.getItem('gatuno-completed') || '[]');
-      if (completed.includes(lessonId)) {
-        const btn = document.getElementById('complete-btn');
-        const icon = document.getElementById('complete-icon');
-        const text = document.getElementById('complete-text');
-        if (btn) { btn.style.background = 'var(--success)'; btn.style.borderColor = 'var(--success)'; btn.style.color = 'white'; }
-        if (icon) icon.textContent = '✓';
-        if (text) text.textContent = '¡Lección completada!';
-      }
-    }
-  });
-
-  (window as any).markComplete = markComplete;
-</script>
 
 <style>
   @media (max-width: 768px) {
