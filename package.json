@@ -1,20 +1,30 @@
 {
   "name": "gatuno-code",
+  "private": true,
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.6",
-    "@astrojs/mdx": "^4.3.13",
+    "@mdx-js/react": "^3.1.1",
     "@tailwindcss/vite": "^4.2.1",
-    "astro": "^5.17.1",
-    "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.9.4",
+    "tailwindcss": "^4.2.1"
+  },
+  "devDependencies": {
+    "@mdx-js/rollup": "^3.1.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "remark-frontmatter": "^5.0.0",
+    "remark-mdx-frontmatter": "^5.2.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-win32-x64-msvc": "^4.2.1"

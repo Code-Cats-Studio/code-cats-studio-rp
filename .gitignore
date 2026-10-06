@@ -3,6 +3,10 @@ dist/
 # generated types
 .astro/
 
+# typescript
+*.tsbuildinfo
+node_modules/.tmp/
+
 # dependencies
 node_modules/
 
