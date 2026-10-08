@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import CheckinForm from "./CheckinForm";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,9 @@ export default function Sidebar({
 
   // Estado: lecciones completadas leídas desde localStorage
   const [completed, setCompleted] = useState<string[]>([]);
+
+  // Estado: desplegable de checkin de asistencia
+  const [isCheckinOpen, setIsCheckinOpen] = useState(false);
 
   // Resolver dinámicamente el curso, sección y lección activa
   const [urlParams, setUrlParams] = useState({
@@ -507,6 +511,39 @@ export default function Sidebar({
             );
           })}
         </nav>
+
+        {/* ── Panel de Asistencia a Clases en Vivo ──────────────────────── */}
+        <div
+          className="flex-shrink-0 p-3"
+          style={{
+            borderTop: "1px solid var(--border)",
+            background: "var(--bg-primary)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setIsCheckinOpen(!isCheckinOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all border select-none"
+            style={{
+              background: isCheckinOpen ? "var(--bg-accent-soft)" : "var(--bg-secondary)",
+              borderColor: isCheckinOpen ? "var(--azul-gatuno)" : "var(--border)",
+              color: "var(--azul-gatuno)",
+              fontFamily: "var(--font-heading)",
+            }}
+          >
+            <span className="flex items-center gap-1.5">
+              <span>📋</span>
+              <span>Marcar Asistencia</span>
+            </span>
+            <span style={{ fontSize: "0.7rem" }}>{isCheckinOpen ? "▲" : "▼"}</span>
+          </button>
+
+          {isCheckinOpen && (
+            <div className="mt-2.5 max-h-72 overflow-y-auto">
+              <CheckinForm courseTitle={courseTitle || activeCourseSlug} />
+            </div>
+          )}
+        </div>
       </aside>
     </>
   );
