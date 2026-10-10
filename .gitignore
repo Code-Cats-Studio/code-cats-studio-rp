@@ -2,6 +2,9 @@
 dist/
 # generated types
 .astro/
+/vscode/
+*.fig
+*.pdf
 
 # typescript
 *.tsbuildinfo
