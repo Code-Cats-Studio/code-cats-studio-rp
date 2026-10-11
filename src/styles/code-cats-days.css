@@ -86,6 +86,20 @@
 }
 @keyframes ccd-marquee { to { transform: translateX(-50%); } }
 
+.ccd-pass { padding-block: 72px; }
+.ccd-pass__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.ccd-pass__copy { display: grid; justify-items: start; gap: 22px; }
+.ccd-pass__kicker { font: clamp(15px, 1.9vw, 26px)/1.2 var(--f-title); text-transform: uppercase; }
+.ccd .ccd-pass__title { font: clamp(36px, 5.2vw, 70px)/1.12 var(--f-title); letter-spacing: -.035em; text-transform: uppercase; color: var(--blue); text-wrap: balance; }
+.ccd-pass__visual { position: relative; width: min(100%, 540px); aspect-ratio: 625 / 576; justify-self: center; }
+.ccd-pass__badge { position: absolute; left: 0; top: 0; width: 72.5%; transform-origin: 33% 4%; }
+.ccd-pass__status { position: absolute; left: 57.6%; top: 35.2%; width: 42.4%; }
+@media (prefers-reduced-motion: no-preference) {
+  .ccd-pass__badge { animation: ccd-sway 6s ease-in-out infinite; }
+  .ccd-pass__status { animation: ccd-bob 4.5s ease-in-out infinite; }
+}
+@keyframes ccd-sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+@keyframes ccd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .ccd-sponsors { padding-block: 76px 48px; }
 .ccd-section-heading { display: grid; gap: 24px; margin-bottom: 32px; }
 .ccd-tiers { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
@@ -131,7 +145,8 @@
 
 @media (max-width: 1100px) {
   .ccd-container { width: calc(100% - 64px); }
-    .ccd-hero__grid { gap: 20px; }
+  .ccd-communities__grid { gap: 40px; }
+  .ccd-hero__grid { gap: 20px; }
 }
 @media (max-width: 860px) {
   .ccd-container { width: calc(100% - 40px); }
@@ -152,8 +167,11 @@
   .ccd-countdown__num { font-size: 26px; }
   .ccd-band { padding-block: 22px 34px; }
   .ccd-band__group, .ccd-band__group > span { gap: 28px; }
-      .ccd-sponsors { padding-block: 48px 32px; }
-    .ccd-title { font-size: clamp(30px, 7vw, 52px); }
+  .ccd-pass { padding-block: 48px; }
+  .ccd-pass__grid, .ccd-join, .ccd-communities__grid { grid-template-columns: 1fr; gap: 32px; }
+  .ccd-pass__visual { width: min(100%, 420px); }
+  .ccd-sponsors { padding-block: 48px 32px; }
+  .ccd-title { font-size: clamp(30px, 7vw, 52px); }
   .ccd-join { padding-top: 48px; }
   .ccd-join__cat { max-width: 340px; justify-self: center; }
   .ccd-communities { padding-top: 56px; }

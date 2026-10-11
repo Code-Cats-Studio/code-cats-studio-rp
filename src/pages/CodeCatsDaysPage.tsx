@@ -19,6 +19,7 @@ const TIERS = [
   { name: 'Trailblazer', kind: 'Sponsor bronce' },
 ];
 const SPONSOR_MESSAGE = '¡Hola Code Cats Studio! Quiero que nuestra organización sea sponsor de Code Cats Days 2026 (Expedition 01). ¿Me cuentan más sobre los niveles Expedition Lead, Pathfinder y Trailblazer?';
+const LINKTREE_URL = 'https://linktr.ee/code_cats_studio';
 const COMMUNITY_FORM_URL = 'https://forms.gle/698u1Uwvwd23VaRC6';
 const whatsappLink = (message: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 
@@ -133,6 +134,21 @@ export default function CodeCatsDaysPage() {
         </section>
 
         <Band />
+
+        <section id="cat-pass" className="ccd-pass ccd-tex" aria-labelledby="cat-pass-title">
+          <div className="ccd-container ccd-pass__grid">
+            <div className="ccd-pass__copy" data-reveal>
+              <p className="ccd-pass__kicker">Tu próxima aventura tech</p>
+              <h2 id="cat-pass-title" className="ccd-pass__title">Está por comenzar</h2>
+              <p className="ccd-text">Estamos preparando todo para tu llegada. Muy pronto podrás conseguir tu <strong>CAT PASS</strong> y ser parte de esta expedición completamente <strong>GRATUITO</strong>.</p>
+              <a className="ccd-btn ccd-btn--arrow" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer">Mantenme al tanto <span aria-hidden="true">↗</span></a>
+            </div>
+            <div className="ccd-pass__visual" data-cat-reveal>
+              <img className="ccd-pass__badge" src={`${ASSETS}/credencial.png`} width={453} height={576} loading="lazy" alt="Credencial Cat Pass de Code Cats Days 2026, Expedition 01" />
+              <img className="ccd-pass__status" src={`${ASSETS}/estado.png`} width={265} height={55} loading="lazy" alt="Estado: próximamente" />
+            </div>
+          </div>
+        </section>
 
         <section id="sponsors" className="ccd-sponsors ccd-tex">
           <div className="ccd-container">
