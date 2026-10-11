@@ -168,37 +168,81 @@ export default function YouTubePlayer({
   }, [isApiReady, videoId, flush]);
 
   return (
-    <div className="my-6">
-      <div
-        className="relative w-full overflow-hidden rounded-2xl shadow-md"
+    <div className="w-full my-8">
+      {/* Marco de Video Code Cats */}
+      <div 
+        className="w-full rounded-2xl overflow-hidden shadow-lg"
         style={{
-          paddingTop: '56.25%', // Relación de aspecto 16:9
-          background: '#0F0F14',
-          border: '1.5px solid var(--border)',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border)',
         }}
       >
-        <div ref={containerRef} className="absolute top-0 left-0 w-full h-full" />
-      </div>
-
-      {/* Barra de estado del reproductor */}
-      <div className="mt-2.5 flex items-center justify-between text-xs px-1 text-gray-500">
-        <div className="flex items-center gap-2">
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ background: isCompleted ? 'var(--verde-limon)' : 'var(--azul-gatuno)' }}
-          />
-          <span style={{ fontFamily: 'var(--font-heading)' }}>
-            {isCompleted
-              ? '🎉 ¡Completitud de video alcanzada!'
-              : 'Sincronizando tiempo de visualización con el servidor'}
+        {/* Cabecera del reproductor */}
+        <div 
+          className="w-full px-4 py-2 flex items-center justify-center border-b"
+          style={{ 
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--border)'
+          }}
+        >
+          <span 
+            className="text-[10px] font-bold uppercase tracking-widest text-gray-400 select-none"
+            style={{ fontFamily: 'var(--font-heading)' }}
+          >
+            Code Cats Studio Player
           </span>
         </div>
 
-        {totalSecondsWatched > 0 && (
-          <span className="font-mono text-gray-400">
-            {Math.floor(totalSecondsWatched / 60)}m {totalSecondsWatched % 60}s registrados
+        {/* Contenedor Responsivo 16:9 */}
+        <div 
+          className="relative w-full"
+          style={{ paddingBottom: '56.25%', background: '#000' }}
+        >
+          <div 
+            ref={containerRef} 
+            className="absolute top-0 left-0 w-full h-full" 
+          />
+        </div>
+      </div>
+
+      {/* Barra de Progreso y Estado */}
+      <div 
+        className="mt-3 flex items-center justify-between px-3 py-2 rounded-lg text-xs"
+        style={{ background: 'var(--bg-tertiary)' }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="relative flex h-2.5 w-2.5 items-center justify-center">
+            {isCompleted ? (
+              <>
+                <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: 'var(--verde-limon)' }} />
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'var(--verde-limon)' }} />
+              </>
+            ) : (
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'var(--azul-gatuno)' }} />
+            )}
+          </div>
+          <span 
+            className="font-semibold"
+            style={{ 
+              color: isCompleted ? 'var(--verde-limon)' : 'var(--text-secondary)',
+              fontFamily: 'var(--font-heading)' 
+            }}
+          >
+            {isCompleted
+              ? '✓ Lección completada exitosamente'
+              : 'Sincronizando tiempo de visualización...'}
           </span>
-        )}
+        </div>
+
+        <div className="flex items-center gap-1.5 font-mono text-gray-500 font-medium">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {totalSecondsWatched > 0 
+            ? `${Math.floor(totalSecondsWatched / 60)}m ${totalSecondsWatched % 60}s`
+            : '0m 0s'
+          }
+        </div>
       </div>
     </div>
   );

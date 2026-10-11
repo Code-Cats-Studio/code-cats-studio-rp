@@ -74,7 +74,6 @@ export default function CheckinForm({
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">📋</span>
           <h3
             style={{
               fontFamily: 'var(--font-heading)',
