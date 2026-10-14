@@ -1,0 +1,49 @@
+{
+	"Alianzas": [
+		{
+			"nombre": "Women Techmakers El Alto",
+			"ubicacion": "La Paz",
+			"redes": {
+				"facebook": "https://www.facebook.com/profile.php?id=100095250257108",
+				"instagram": "https://www.instagram.com/wtm.elalto/",
+				"tiktok": "https://www.tiktok.com/@wtm.elalto?lang=es"
+			}
+		},
+		{
+			"nombre": "R00thouse - Hacklab La Paz",
+			"ubicacion": "La Paz",
+			"redes": {
+				"facebook": "https://www.facebook.com/r00thouse",
+				"instagram": "https://www.instagram.com/r00thouse/",
+				"tiktok": "https://www.tiktok.com/@r00thouse?lang=es"
+			}
+		},
+		{
+			"nombre": "Microsoft Education Hub - MEH",
+			"ubicacion": "La Paz",
+			"redes": {
+				"facebook": "https://www.facebook.com/microsoft.education.hub",
+				"instagram": "https://www.instagram.com/microsoft_education_hub/",
+				"tiktok": "https://www.tiktok.com/@microsoft_education_hub?lang=es"
+			}
+		},
+		{
+			"nombre": "GDG El Alto",
+			"redes": {
+				"facebook": "https://www.facebook.com/gdg.elalto.bo",
+				"instagram": "https://www.instagram.com/gdg.elalto/",
+				"tiktok": "https://www.tiktok.com/@gdg.elalto?lang=es"
+			}
+		}
+	],
+	"Sponsors": [
+		{
+			"nombre": "TCA La Paz",
+			"redes": {
+				"facebook": "https://www.facebook.com/profile.php?id=61556455592365",
+				"instagram": "https://www.instagram.com/tca.lapaz/",
+				"tiktok": "https://www.tiktok.com/@tca_lapaz?lang=es"
+			}
+		}
+	]
+}

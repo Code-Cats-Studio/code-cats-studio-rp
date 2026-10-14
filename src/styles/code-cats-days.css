@@ -102,18 +102,43 @@
 @keyframes ccd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .ccd-sponsors { padding-block: 76px 48px; }
 .ccd-section-heading { display: grid; gap: 24px; margin-bottom: 32px; }
-.ccd-tiers { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
-.ccd-tier { min-height: 180px; padding: 26px; border: 1px solid var(--line); border-radius: 16px; display: grid; align-content: space-between; gap: 16px; }
-.ccd-tier--1 { grid-row: span 2; background: var(--ink); color: var(--paper); }
-.ccd-tier--2 { background: var(--blue); color: var(--white); border-color: var(--blue); }
-.ccd-tier--3 { background: var(--paper); }
-.ccd-tier__kind { font-size: 14px; }
-.ccd-tier__name { font: clamp(22px, 2.4vw, 34px)/1.3 var(--f-tech); text-transform: uppercase; text-wrap: balance; }
-.ccd-tier--1 .ccd-tier__name { font-size: clamp(30px, 4vw, 54px); max-width: 10ch; }
-.ccd-tier a { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; font-weight: 600; }
-.ccd-tier a span { font-size: 25px; transition: transform .2s ease; }
-.ccd-tier a:hover span { transform: translate(3px, -3px); }
-.ccd-tier--1 :focus-visible, .ccd-tier--2 :focus-visible { outline-color: var(--white); }
+.ccd-tiers { display: grid; gap: 20px; }
+.ccd-tier { display: grid; grid-template-columns: minmax(240px, 32%) 1fr; min-height: 225px; border: 1px solid var(--ink); border-radius: 16px; }
+.ccd-tier__label { display: grid; align-content: center; gap: 14px; padding: 28px 36px; border-radius: 16px; }
+.ccd-tier--1 .ccd-tier__label { background: var(--ink); color: var(--paper); }
+.ccd-tier--2 .ccd-tier__label { background: var(--blue); color: var(--white); }
+.ccd-tier--3 .ccd-tier__label { border: 1px solid var(--ink); margin: -1px; }
+.ccd-tier__name { font: clamp(22px, 2.4vw, 32px)/1.15 var(--f-tech); text-transform: uppercase; text-wrap: balance; }
+.ccd-tier__kind { font-size: 15px; }
+.ccd-tier__logos { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 24px; padding: 24px; }
+.ccd-tier__empty { color: var(--muted); font-size: 14px; opacity: .7; }
+
+.ccd-org { position: relative; width: 100%; max-width: 320px; }
+.ccd-org[data-open='true'] { z-index: 6; }
+/* Reveal wrappers create stacking contexts: lift every ancestor of an open menu above the content that follows. */
+.ccd-tiers:has(.ccd-org[data-open='true']), .ccd-tier:has(.ccd-org[data-open='true']),
+.ccd-orgs:has(.ccd-org[data-open='true']), .ccd-orgs li:has(.ccd-org[data-open='true']) { position: relative; z-index: 6; }
+.ccd-org__btn { position: relative; display: grid; place-items: center; width: 100%; min-height: 130px; padding: 20px 24px; border: 0; border-radius: 16px; background: transparent; cursor: pointer; transition: transform .2s ease; }
+.ccd-org__btn img { width: auto; max-width: 100%; max-height: 96px; object-fit: contain; }
+.ccd-org__hint { position: absolute; bottom: 6px; left: 50%; translate: -50% 4px; padding: 2px 10px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 11px; opacity: 0; transition: opacity .2s ease, translate .2s ease; pointer-events: none; }
+.ccd-org__btn:hover .ccd-org__hint, .ccd-org__btn:focus-visible .ccd-org__hint { opacity: 1; translate: -50% 0; }
+.ccd-org[data-open='true'] .ccd-org__hint { opacity: 0; }
+.ccd-org__menu { position: absolute; top: calc(100% + 4px); left: 50%; translate: -50% 0; z-index: 6; width: max(100%, 190px); margin: 0; padding: 10px; list-style: none; display: grid; gap: 6px; background: var(--paper); border: 1px solid var(--ink); border-radius: 16px; box-shadow: 0 8px 0 rgb(24 24 32 / .12); transform-origin: top center; }
+.ccd-org__menu a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 14px; transition: background .2s ease, color .2s ease; }
+.ccd-org__menu a:hover, .ccd-org__menu a:focus-visible { background: var(--blue); color: var(--white); }
+@media (prefers-reduced-motion: no-preference) {
+  .ccd-org__btn:hover { transform: translateY(-4px); }
+  .ccd-org__menu { animation: ccd-pop .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+  .ccd-org__menu li { animation: ccd-hop .45s cubic-bezier(.34, 1.56, .64, 1) both; animation-delay: calc(var(--i) * 70ms + 80ms); }
+}
+@keyframes ccd-pop { from { opacity: 0; transform: translateY(-14px) scale(.88); } to { opacity: 1; transform: none; } }
+@keyframes ccd-hop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+.ccd-orgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; list-style: none; margin-block: 56px 0; padding: 0; }
+.ccd-orgs li { display: grid; }
+.ccd-orgs .ccd-org { max-width: none; border: 1px solid var(--ink); border-radius: 16px; }
+.ccd-orgs .ccd-org__btn { min-height: 190px; padding: 28px; }
+.ccd-orgs .ccd-org__menu { top: calc(100% + 8px); width: 100%; min-width: 170px; }
 .ccd-join { display: grid; grid-template-columns: 1.25fr 1fr; gap: 50px; align-items: center; padding-top: 72px; }
 .ccd-join > div { display: grid; justify-items: start; gap: 24px; }
 .ccd-join__cat { width: 100%; max-width: 455px; justify-self: end; }
@@ -171,6 +196,10 @@
   .ccd-pass__grid, .ccd-join, .ccd-communities__grid { grid-template-columns: 1fr; gap: 32px; }
   .ccd-pass__visual { width: min(100%, 420px); }
   .ccd-sponsors { padding-block: 48px 32px; }
+  .ccd-tier { grid-template-columns: 1fr; min-height: 0; }
+  .ccd-tier__label { padding: 24px 28px; }
+  .ccd-tier__logos { min-height: 150px; }
+  .ccd-orgs { margin-top: 40px; }
   .ccd-title { font-size: clamp(30px, 7vw, 52px); }
   .ccd-join { padding-top: 48px; }
   .ccd-join__cat { max-width: 340px; justify-self: center; }
@@ -197,10 +226,8 @@
   .ccd-hero__cat-entry { width: 220px; }
   .ccd-countdown__num { font-size: 25px; }
   .ccd-countdown-caption { margin-bottom: 8px !important; }
-  .ccd-tiers { grid-template-columns: 1fr; }
-  .ccd-tier--1 { grid-row: auto; }
-  .ccd-tier--1 .ccd-tier__name { font-size: 30px; max-width: none; }
-  .ccd-tier { min-height: 170px; padding: 22px; }
+  .ccd-orgs { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .ccd-orgs .ccd-org__btn { min-height: 140px; padding: 18px; }
   .ccd-communities__visual { flex-direction: column; align-items: start; }
   .ccd-communities__cat { align-self: end; margin-top: -34px; width: 220px; }
   .ccd-invite .ccd-btn { font-size: 10px; padding-inline: 20px; gap: 16px; }

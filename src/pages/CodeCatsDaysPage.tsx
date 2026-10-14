@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import EventMotion from '../components/event/EventMotion';
 import { setPageMeta } from '../utils/seo';
+import redes from '../utils/redes.json';
 import '../styles/code-cats-days.css';
 
 const ASSETS = '/code-cats-days';
@@ -14,10 +15,24 @@ const NAV_LINKS = [
 const SECTION_IDS = NAV_LINKS.map((link) => link.id);
 const WORDS = ['Explora', 'Construye', 'Comparte'];
 const TIERS = [
-  { name: 'Expedition Lead', kind: 'Sponsor oro' },
-  { name: 'Pathfinder', kind: 'Sponsor plata' },
-  { name: 'Trailblazer', kind: 'Sponsor bronce' },
+  { name: 'Expedition Lead', kind: 'Sponsors ORO', sponsors: [] as string[] },
+  { name: 'Pathfinder', kind: 'Sponsor PLATA', sponsors: ['TCA La Paz'] },
+  { name: 'Trailblazer', kind: 'Sponsor BRONCE', sponsors: [] as string[] },
 ];
+// redes.json has no logo field, so logos are matched by organization name.
+const LOGOS: Record<string, string> = {
+  'TCA La Paz': '/sponsors/logo_sponsor_academy.png',
+  'Women Techmakers El Alto': '/aliadas/wtm_logo.png',
+  'R00thouse - Hacklab La Paz': '/aliadas/root_logo.png',
+  'Microsoft Education Hub - MEH': '/aliadas/meh_logo.png',
+  'GDG El Alto': '/aliadas/gdg_logo.png',
+};
+const SOCIALS = [
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'facebook', label: 'Facebook' },
+  { key: 'tiktok', label: 'TikTok' },
+] as const;
+type Org = { nombre: string; redes: Partial<Record<(typeof SOCIALS)[number]['key'], string>> };
 const SPONSOR_MESSAGE = '¡Hola Code Cats Studio! Quiero que nuestra organización sea sponsor de Code Cats Days 2026 (Expedition 01). ¿Me cuentan más sobre los niveles Expedition Lead, Pathfinder y Trailblazer?';
 const LINKTREE_URL = 'https://linktr.ee/code_cats_studio';
 const COMMUNITY_FORM_URL = 'https://forms.gle/698u1Uwvwd23VaRC6';
@@ -48,6 +63,38 @@ function Countdown() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// Logo that opens a small menu with the organization's social links.
+function OrgLogo({ org, menuId }: { org: Org; menuId: string }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  const links = SOCIALS.flatMap(({ key, label }) => { const href = org.redes[key]; return href ? [{ label, href }] : []; });
+  return (
+    <div ref={root} className="ccd-org" data-open={open}>
+      <button type="button" className="ccd-org__btn" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)}>
+        <img src={LOGOS[org.nombre]} alt={org.nombre} loading="lazy" />
+        <span className="ccd-org__hint" aria-hidden="true">Ver redes</span>
+      </button>
+      {open && (
+        <ul id={menuId} className="ccd-org__menu" aria-label={`Redes de ${org.nombre}`}>
+          {links.map(({ label, href }, index) => (
+            <li key={label} style={{ '--i': index } as CSSProperties}>
+              <a href={href} target="_blank" rel="noopener noreferrer">{label} <span aria-hidden="true">↗</span></a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -159,9 +206,17 @@ export default function CodeCatsDaysPage() {
             <div className="ccd-tiers" data-reveal>
               {TIERS.map((tier, index) => (
                 <article className={`ccd-tier ccd-tier--${index + 1}`} key={tier.name}>
-                  <p className="ccd-tier__kind">{tier.kind}</p>
-                  <h3 className="ccd-tier__name">{tier.name}</h3>
-                  <a href={whatsappLink(SPONSOR_MESSAGE)} target="_blank" rel="noopener noreferrer" aria-label={`Consultar alianza ${tier.name}`}>Conocer la alianza <span aria-hidden="true">↗</span></a>
+                  <header className="ccd-tier__label">
+                    <h3 className="ccd-tier__name">{tier.name}</h3>
+                    <p className="ccd-tier__kind">{tier.kind}</p>
+                  </header>
+                  <div className="ccd-tier__logos">
+                    {tier.sponsors.length === 0 && <p className="ccd-tier__empty">Espacio disponible</p>}
+                    {tier.sponsors.map((nombre) => {
+                      const org = redes.Sponsors.find((item) => item.nombre === nombre);
+                      return org ? <OrgLogo key={nombre} org={org} menuId={`redes-${index}`} /> : null;
+                    })}
+                  </div>
                 </article>
               ))}
             </div>
@@ -191,6 +246,11 @@ export default function CodeCatsDaysPage() {
               </div>
             </div>
           </div>
+          <ul className="ccd-container ccd-orgs" data-reveal aria-label="Comunidades aliadas">
+            {redes.Alianzas.map((org, index) => (
+              <li key={org.nombre}><OrgLogo org={org} menuId={`redes-aliada-${index}`} /></li>
+            ))}
+          </ul>
           <div className="ccd-container ccd-invite" data-reveal>
             <h2 className="ccd-heading">¿Sumamos tu comunidad?</h2>
             <p className="ccd-text">Conectemos talentos, ideas y comunidades tech.</p>
