@@ -15,9 +15,9 @@ const NAV_LINKS = [
 const SECTION_IDS = NAV_LINKS.map((link) => link.id);
 const WORDS = ['Explora', 'Construye', 'Comparte'];
 const TIERS = [
-  { name: 'Expedition Lead', kind: 'Sponsors ORO', sponsors: [] as string[] },
-  { name: 'Pathfinder', kind: 'Sponsor PLATA', sponsors: ['TCA La Paz'] },
-  { name: 'Trailblazer', kind: 'Sponsor BRONCE', sponsors: [] as string[] },
+  { name: 'Expedition Lead', kind: 'Sponsors ORO', sponsors: [] as string[], formUrl: 'https://forms.gle/Z1xtK6YAQQ8yiq7L7' },
+  { name: 'Pathfinder', kind: 'Sponsor PLATA', sponsors: ['TCA La Paz'], formUrl: 'https://forms.gle/PP1veypSuDEP2o9b9' },
+  { name: 'Trailblazer', kind: 'Sponsor BRONCE', sponsors: [] as string[], formUrl: 'https://forms.gle/yQTiaJu7tdcG87d36' },
 ];
 // redes.json has no logo field, so logos are matched by organization name.
 const LOGOS: Record<string, string> = {
@@ -209,6 +209,7 @@ export default function CodeCatsDaysPage() {
                   <header className="ccd-tier__label">
                     <h3 className="ccd-tier__name">{tier.name}</h3>
                     <p className="ccd-tier__kind">{tier.kind}</p>
+                    <a className="ccd-tier__cta" href={tier.formUrl} target="_blank" rel="noopener noreferrer" aria-label={`Quiero ser sponsor ${tier.name}`}>Quiero este nivel <span aria-hidden="true">↗</span></a>
                   </header>
                   <div className="ccd-tier__logos">
                     {tier.sponsors.length === 0 && <p className="ccd-tier__empty">Espacio disponible</p>}
@@ -224,7 +225,7 @@ export default function CodeCatsDaysPage() {
               <div data-reveal>
                 <h2 className="ccd-heading">¿Te sumas a<br /><span>la expedición?</span></h2>
                 <p className="ccd-text">Buscamos organizaciones que crean en el talento, la tecnología y el poder de construir en comunidad.</p>
-                <a className="ccd-btn ccd-btn--arrow" href={whatsappLink(SPONSOR_MESSAGE)} target="_blank" rel="noopener noreferrer">Quiero ser sponsor <span aria-hidden="true">↗</span></a>
+                <a className="ccd-btn ccd-btn--arrow" href={whatsappLink(SPONSOR_MESSAGE)} target="_blank" rel="noopener noreferrer">Más información <span aria-hidden="true">↗</span></a>
               </div>
               <img className="ccd-join__cat" data-cat-reveal src={`${ASSETS}/sponsor_gato2.png`} width={455} height={302} loading="lazy" alt="" />
             </div>

@@ -110,7 +110,15 @@
 .ccd-tier--3 .ccd-tier__label { border: 1px solid var(--ink); margin: -1px; }
 .ccd-tier__name { font: clamp(22px, 2.4vw, 32px)/1.15 var(--f-tech); text-transform: uppercase; text-wrap: balance; }
 .ccd-tier__kind { font-size: 15px; }
+.ccd-tier__cta { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; padding-top: 12px; border-top: 1px solid currentColor; font-size: 14px; font-weight: 700; }
+.ccd-tier__cta span { font-size: 22px; transition: transform .2s ease; }
+.ccd-tier__cta:hover span { transform: translate(3px, -3px); }
+.ccd-tier--1 :focus-visible, .ccd-tier--2 :focus-visible { outline-color: var(--white); }
 .ccd-tier__logos { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 24px; padding: 24px; }
+/* Solid paper fill, same as the community cards, so the grid texture only shows around the tiers. */
+.ccd-tier { transition: box-shadow .25s ease, transform .25s ease; }
+.ccd-tier__logos { margin: 1px; border-radius: 0 15px 15px 0; background: var(--paper); }
+@media (prefers-reduced-motion: no-preference) { .ccd-tier:hover { transform: translateY(-3px); box-shadow: 0 7px 0 rgb(65 66 244 / .2); } }
 .ccd-tier__empty { color: var(--muted); font-size: 14px; opacity: .7; }
 
 .ccd-org { position: relative; width: 100%; max-width: 320px; }
@@ -198,7 +206,7 @@
   .ccd-sponsors { padding-block: 48px 32px; }
   .ccd-tier { grid-template-columns: 1fr; min-height: 0; }
   .ccd-tier__label { padding: 24px 28px; }
-  .ccd-tier__logos { min-height: 150px; }
+  .ccd-tier__logos { min-height: 150px; border-radius: 0 0 15px 15px; }
   .ccd-orgs { margin-top: 40px; }
   .ccd-title { font-size: clamp(30px, 7vw, 52px); }
   .ccd-join { padding-top: 48px; }
