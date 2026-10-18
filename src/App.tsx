@@ -12,6 +12,7 @@ const LessonPage = lazy(() => import('./pages/LessonPage'));
 const EventoPage = lazy(() => import('./pages/EventoPage'));
 const RegistroPage = lazy(() => import('./pages/RegistroPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RestablecerPage = lazy(() => import('./pages/RestablecerPage'));
 const CursosPage = lazy(() => import('./pages/CursosPage'));
 const MisCursosPage = lazy(() => import('./pages/MisCursosPage'));
 const VerificarPage = lazy(() => import('./pages/VerificarPage'));
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/registro" element={<RegistroPage />} />
             <Route path="/perfil" element={<RegistroPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/restablecer" element={<RestablecerPage />} />
             <Route path="/terminos" element={<TerminosPage />} />
             <Route path="/privacidad" element={<PrivacidadPage />} />
             <Route path="/cursos" element={<CursosPage />} />

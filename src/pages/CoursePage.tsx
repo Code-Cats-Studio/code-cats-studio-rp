@@ -5,13 +5,14 @@ import Instructors from '../components/course/Instructors';
 import {
   fetchCourseBySlug,
   fetchOfferingAvailability,
-  enrollInOffering,
   checkMyEnrollment,
   getCourseSections,
   type Course,
   type CourseOffering,
   type OfferingAvailability,
 } from '../services/courses';
+import SchedulePicker from '../components/course/SchedulePicker';
+import { enrollWithPreference } from '../services/schedules';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 
@@ -36,7 +37,7 @@ const learningItems = [
 export default function CoursePage() {
   const { courseSlug } = useParams();
   const navigate = useNavigate();
-  const { user, isProfileComplete, signInWithGoogle } = useAuth();
+  const { user, isProfileComplete } = useAuth();
 
   const [course, setCourse] = useState<Course | undefined>(undefined);
   const [activeOffering, setActiveOffering] = useState<CourseOffering | null>(null);
@@ -46,6 +47,7 @@ export default function CoursePage() {
   // Estados de inscripción
   const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
   const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
+  const [preferredGroup, setPreferredGroup] = useState<string | null>(null);
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'warning' | 'error';
@@ -127,7 +129,7 @@ export default function CoursePage() {
 
     // Si el usuario no ha iniciado sesión
     if (!user) {
-      void signInWithGoogle();
+      navigate('/login');
       return;
     }
 
@@ -154,7 +156,7 @@ export default function CoursePage() {
     setIsEnrolling(true);
 
     try {
-      const response = await enrollInOffering(activeOffering.id);
+      const response = await enrollWithPreference(activeOffering.id, preferredGroup);
 
       if (response.error) {
         // Si el backend rechaza por perfil incompleto
@@ -396,6 +398,11 @@ export default function CoursePage() {
             ) : (
               // Usuario no inscrito aún
               <div className="flex items-center gap-3 flex-wrap">
+                {user && activeOffering && (
+                  <div className="w-full">
+                    <SchedulePicker offeringId={activeOffering.id} value={preferredGroup} onChange={setPreferredGroup} />
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => void handleEnrollment()}

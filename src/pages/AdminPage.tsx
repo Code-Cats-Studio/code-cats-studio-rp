@@ -15,6 +15,9 @@ import {
   type PendingApplication,
   type TeacherOption,
 } from '../services/admin';
+import GroupsAdmin from '../components/admin/GroupsAdmin';
+import EventsAdmin from '../components/admin/EventsAdmin';
+import StaffAdmin from '../components/admin/StaffAdmin';
 import { setPageMeta } from '../utils/seo';
 
 const STATUS_OPTIONS: { value: OfferingStatus; label: string }[] = [
@@ -245,6 +248,10 @@ export default function AdminPage() {
           })}
         </ul>
       </section>
+
+      <GroupsAdmin />
+      <EventsAdmin />
+      <StaffAdmin />
     </main>
   );
 }

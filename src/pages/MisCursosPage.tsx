@@ -11,6 +11,8 @@ import {
   type MyEnrollment,
   type MyProgress,
 } from '../services/account';
+import { buildGoogleCalendarUrl } from '../services/liveSessions';
+import { fetchMyUpcomingClasses, type UpcomingClass } from '../services/schedules';
 import { setPageMeta } from '../utils/seo';
 
 const STATUS_LABEL: Record<MyEnrollment['status'], string> = {
@@ -27,6 +29,7 @@ export default function MisCursosPage() {
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [progress, setProgress] = useState<Record<string, MyProgress | null>>({});
   const [certificates, setCertificates] = useState<MyCertificate[]>([]);
+  const [classes, setClasses] = useState<UpcomingClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -36,9 +39,14 @@ export default function MisCursosPage() {
 
   const load = useCallback(async (userId: string) => {
     setLoading(true);
-    const [list, certs] = await Promise.all([fetchMyEnrollments(userId), fetchMyCertificates()]);
+    const [list, certs, upcoming] = await Promise.all([
+      fetchMyEnrollments(userId),
+      fetchMyCertificates(),
+      fetchMyUpcomingClasses(),
+    ]);
     setEnrollments(list);
     setCertificates(certs);
+    setClasses(upcoming);
     const entries = await Promise.all(
       list
         .filter((e) => e.offering && (e.status === 'active' || e.status === 'completed'))
@@ -74,6 +82,49 @@ export default function MisCursosPage() {
         <p role="status" className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {message}
         </p>
+      )}
+
+      {classes.length > 0 && (
+        <section className="mt-8" aria-labelledby="classes-title">
+          <h2 id="classes-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', letterSpacing: '0.05em' }}>
+            Próximas clases
+          </h2>
+          <ul className="mt-4 grid gap-3">
+            {classes.map((c) => (
+              <li
+                key={c.id}
+                className="p-4 rounded-xl flex flex-wrap items-center justify-between gap-3"
+                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+              >
+                <div>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{c.title}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {c.course_title}{c.group_name ? ` · ${c.group_name}` : ''}
+                  </p>
+                  <p className="text-sm capitalize" style={{ color: 'var(--text-secondary)' }}>
+                    {new Date(c.starts_at).toLocaleString('es-BO', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/La_Paz' })}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {c.join_url ? (
+                    <a href={c.join_url} target="_blank" rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-xl text-sm font-semibold no-underline"
+                      style={{ fontFamily: 'var(--font-heading)', background: 'var(--azul-gatuno)', color: '#fff' }}>
+                      Entrar a la clase
+                    </a>
+                  ) : (
+                    <span className="px-3 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>El docente aún no puso el enlace de la clase</span>
+                  )}
+                  <a href={buildGoogleCalendarUrl({ ...c, meet_url: c.join_url }, c.course_title)} target="_blank" rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-xl text-sm font-semibold no-underline"
+                    style={{ fontFamily: 'var(--font-heading)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                    Agregar al calendario
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {loading ? (

@@ -10,11 +10,27 @@ import {
 import SubmissionFiles from '../components/course/SubmissionFiles';
 import { fetchFilesBySubmission, type SubmissionFile } from '../services/submissions';
 import { buildGoogleCalendarUrl, type LiveSession } from '../services/liveSessions';
+import ClassScheduler from '../components/schedule/ClassScheduler';
+import { useAuth } from '../context/AuthContext';
+import {
+  fetchAssignmentChoices,
+  fetchMyOfferings,
+  fetchSessionChoices,
+  type AssignmentChoice,
+  type OfferingChoice,
+  type SessionChoice,
+} from '../services/schedules';
 
-type DocenteTab = 'asistencia' | 'roster' | 'calificaciones';
+type DocenteTab = 'asistencia' | 'roster' | 'calificaciones' | 'clases';
 
 export default function DocentePage() {
+  const { user, roles } = useAuth();
   const [activeTab, setActiveTab] = useState<DocenteTab>('asistencia');
+
+  // Listas para elegir (así el docente nunca pega IDs)
+  const [offeringChoices, setOfferingChoices] = useState<OfferingChoice[]>([]);
+  const [sessionChoices, setSessionChoices] = useState<SessionChoice[]>([]);
+  const [assignmentChoices, setAssignmentChoices] = useState<AssignmentChoice[]>([]);
 
   // Estado para la Pestaña 1: Asistencia en Vivo
   const [sessionId, setSessionId] = useState<string>('');
@@ -33,6 +49,25 @@ export default function DocentePage() {
     new Date(Date.now() + 7200000).toISOString().slice(0, 16)
   );
   const [meetUrl, setMeetUrl] = useState<string>('https://meet.google.com/');
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void (async () => {
+      const offs = await fetchMyOfferings(user.id, roles.includes('admin'));
+      const ids = offs.map((o) => o.id);
+      const [sess, asg] = await Promise.all([fetchSessionChoices(ids), fetchAssignmentChoices(ids)]);
+      if (!alive) return;
+      setOfferingChoices(offs);
+      setSessionChoices(sess);
+      setAssignmentChoices(asg);
+      setOfferingId((current) => current || offs[0]?.id || '');
+      setSessionId((current) => current || sess[0]?.id || '');
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [user, roles, activeTab]);
 
   const sessionIdInputId = useId();
   const sessionTitleId = useId();
@@ -220,7 +255,7 @@ export default function DocentePage() {
 
     const targetSessionId = sessionId.trim();
     if (!targetSessionId) {
-      setErrorMessage('Por favor ingresa o selecciona el ID (UUID) de la sesión en vivo.');
+      setErrorMessage('Primero elige la clase en vivo (se programan en la pestaña «Clases y horario»).');
       return;
     }
 
@@ -332,7 +367,22 @@ export default function DocentePage() {
         >
           📝 3. Calificaciones
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('clases')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 cursor-pointer ${
+            activeTab === 'clases'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+          style={{ fontFamily: 'var(--font-heading)' }}
+        >
+          🗓️ 4. Clases y horario
+        </button>
       </nav>
+
+      {activeTab === 'clases' && <ClassScheduler />}
 
       {/* Contenido según pestaña activa */}
       {activeTab === 'asistencia' && (
@@ -394,16 +444,22 @@ export default function DocentePage() {
                   htmlFor={sessionIdInputId}
                   className="block text-xs font-semibold text-gray-600 mb-1.5"
                 >
-                  Identificador de la Sesión en Vivo (UUID):
+                  Clase en vivo:
                 </label>
-                <input
+                <select
                   id={sessionIdInputId}
-                  type="text"
-                  placeholder="ej. a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   value={sessionId}
                   onChange={(e) => setSessionId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border border-gray-300 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                  className="w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {sessionChoices.length === 0 && <option value="">No hay clases programadas</option>}
+                  {sessionChoices.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}{c.group_name ? ` · ${c.group_name}` : ''} ·{' '}
+                      {new Date(c.starts_at).toLocaleString('es-BO', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/La_Paz' })}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -454,7 +510,7 @@ export default function DocentePage() {
                   <span className="text-4xl block mb-2">🔢</span>
                   <p className="text-sm font-medium">Aún no se ha generado un código</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Ingresa el UUID de la sesión y presiona &apos;Generar Nuevo Código&apos;
+                    Elige la clase y presiona &apos;Generar Nuevo Código&apos;
                   </p>
                 </div>
               )}
@@ -541,16 +597,19 @@ export default function DocentePage() {
               <div className="flex items-center gap-2">
                 <div>
                   <label htmlFor={offeringInputId} className="sr-only">
-                    ID de Edición (Offering)
+                    Edición
                   </label>
-                  <input
+                  <select
                     id={offeringInputId}
-                    type="text"
-                    placeholder="UUID de Edición (offering_id)"
                     value={offeringId}
                     onChange={(e) => setOfferingId(e.target.value)}
-                    className="px-3.5 py-2 text-xs md:text-sm rounded-xl border border-gray-300 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56 md:w-64"
-                  />
+                    className="px-3.5 py-2 text-xs md:text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56 md:w-64"
+                  >
+                    {offeringChoices.length === 0 && <option value="">Sin ediciones asignadas</option>}
+                    {offeringChoices.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <button
                   type="button"
@@ -718,14 +777,17 @@ export default function DocentePage() {
                   <label htmlFor={assignmentFilterInputId} className="sr-only">
                     Filtrar por Tarea
                   </label>
-                  <input
+                  <select
                     id={assignmentFilterInputId}
-                    type="text"
-                    placeholder="Filtrar por UUID de tarea (opcional)"
                     value={assignmentFilterId}
                     onChange={(e) => setAssignmentFilterId(e.target.value)}
-                    className="px-3.5 py-2 text-xs md:text-sm rounded-xl border border-gray-300 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56 md:w-64"
-                  />
+                    className="px-3.5 py-2 text-xs md:text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56 md:w-64"
+                  >
+                    <option value="">Todas las tareas</option>
+                    {assignmentChoices.map((a) => (
+                      <option key={a.id} value={a.id}>{a.title}</option>
+                    ))}
+                  </select>
                 </div>
                 <button
                   type="button"

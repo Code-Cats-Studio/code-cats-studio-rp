@@ -44,6 +44,14 @@ export interface AuthContextType {
   isLoading: boolean;
   isProfileComplete: boolean;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  // needsConfirmation = true cuando Supabase envió el correo para verificar la cuenta
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    fullName: string
+  ) => Promise<{ error: Error | null; needsConfirmation: boolean }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
   updateProfile: (data: UserProfileUpdateInput) => Promise<{ error: Error | null }>;

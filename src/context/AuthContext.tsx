@@ -118,6 +118,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  // Cuenta con correo y contraseña (el correo se verifica con el enlace que envía Supabase)
+  const signInWithEmail = useCallback(
+    async (email: string, password: string): Promise<{ error: Error | null }> => {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      return { error: error ? new Error(error.message) : null };
+    },
+    []
+  );
+
+  const signUpWithEmail = useCallback(
+    async (
+      email: string,
+      password: string,
+      fullName: string
+    ): Promise<{ error: Error | null; needsConfirmation: boolean }> => {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { full_name: fullName.trim() },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) return { error: new Error(error.message), needsConfirmation: false };
+      // Sin sesión inmediata = hay que confirmar el correo
+      return { error: null, needsConfirmation: !data.session };
+    },
+    []
+  );
+
+  const resetPassword = useCallback(async (email: string): Promise<{ error: Error | null }> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/restablecer`,
+    });
+    return { error: error ? new Error(error.message) : null };
+  }, []);
+
   // Cerrar sesión
   const signOut = useCallback(async (): Promise<{ error: Error | null }> => {
     try {
@@ -204,6 +241,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isProfileComplete,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+    resetPassword,
     signOut,
     refreshProfile,
     updateProfile,
