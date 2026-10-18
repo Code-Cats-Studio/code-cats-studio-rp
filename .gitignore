@@ -2,6 +2,9 @@
 dist/
 # generated types
 .astro/
+/vscode/
+*.fig
+*.pdf
 
 # typescript
 *.tsbuildinfo
@@ -26,3 +29,4 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+.cache/*
