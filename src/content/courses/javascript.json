@@ -1,0 +1,14 @@
+{
+  "slug": "javascript",
+  "title": "JavaScript",
+  "subtitle": "Programación para la web desde cero",
+  "description": "Aprende JavaScript desde las variables hasta consumir APIs: funciones, arrays, objetos, el DOM, eventos y asincronía, y termina con un proyecto propio.",
+  "duration": "4 semanas · 12 clases · 18 horas",
+  "level": "No se requiere experiencia previa",
+  "mascotImage": "gato-js-1",
+  "accentColor": "#F7DF1E",
+  "sections": 4,
+  "lessons": 12,
+  "comingSoon": true,
+  "startDate": "Por definir"
+}

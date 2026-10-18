@@ -1,228 +1,195 @@
-import { useEffect, useState } from 'react';
-import Hero from '../components/home/Hero';
-import CourseCard from '../components/home/CourseCard';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchPublishedCourses, type Course } from '../services/courses';
 import { setPageMeta } from '../utils/seo';
+import { CountUp, useReveal } from '../components/landing/useReveal';
+import { ABOUT_POINTS, ABOUT_STATS, MARQUEE, PROJECTS, SOCIALS, SYMBOLS } from '../components/landing/data';
+import '../styles/landing.css';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function courseChips(course: Course): { label: string; tone: 'lime' | 'gray' | 'blue' }[] {
+  const parts = course.duration.split('·').map((p) => p.trim()).filter(Boolean).slice(0, 2);
+  const level = /previa|principiante|básico|basico/i.test(course.level) ? 'Básico' : course.level;
+  return [
+    { label: 'Gratis', tone: 'lime' },
+    ...parts.map((label) => ({ label, tone: 'gray' as const })),
+    { label: level, tone: 'blue' },
+  ];
+}
+
+function Marquee() {
+  const group = (hidden: boolean) => (
+    <div className="lp-marquee__group" aria-hidden={hidden || undefined}>
+      {[...MARQUEE, ...MARQUEE].map((word, i) => (
+        <span className="lp-marquee__item" key={`${word}-${i}`}>{word}</span>
+      ))}
+    </div>
+  );
+  return (
+    <div className="lp-marquee" role="presentation">
+      <div className="lp-marquee__track">
+        {group(false)}
+        {group(true)}
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useReveal(rootRef);
+
   useEffect(() => {
-    setPageMeta(
-      'Inicio',
-      'Aprende desarrollo web con cursos prácticos en español'
-    );
-
-    let isMounted = true;
-
-    async function loadCourses() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await fetchPublishedCourses();
-        if (isMounted) {
-          setCourses(data);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(
-            err instanceof Error ? err.message : 'Error al cargar los cursos disponibles'
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadCourses();
-
+    setPageMeta('Inicio', 'Aprende programación en comunidad: cursos gratuitos de desarrollo web en La Paz, Bolivia');
+    let alive = true;
+    fetchPublishedCourses()
+      .then((data) => alive && setCourses(data))
+      .catch((err) => alive && setError(err instanceof Error ? err.message : 'No se pudieron cargar los cursos'))
+      .finally(() => alive && setLoading(false));
     return () => {
-      isMounted = false;
+      alive = false;
     };
   }, []);
 
   return (
-    <>
-      <Hero />
-
-      <section id="cursos" className="py-16 px-6" style={{ background: 'var(--bg-secondary)' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-1 w-8 rounded-full" style={{ background: 'var(--verde-limon)' }} />
-              <span
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                Cursos disponibles
-              </span>
-            </div>
-            <h2
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '2.5rem',
-                color: 'var(--text-primary)',
-                margin: 0,
-              }}
-            >
-              ELIGE TU CAMINO
-            </h2>
+    <div className="lp" ref={rootRef}>
+      {/* Hero */}
+      <section className="lp-hero" aria-labelledby="lp-hero-title">
+        {SYMBOLS.map((s) => (
+          <span key={s.char} aria-hidden="true" className={`lp-symbol lp-symbol--${s.color}`}
+            style={{ top: s.top, left: s.left, fontSize: s.size, animationDelay: s.delay }}>
+            {s.char}
+          </span>
+        ))}
+        <div className="lp-hero__grid">
+          <div className="lp-hero__in">
+            <h1 id="lp-hero-title">Aprende programación <em>en comunidad</em></h1>
+            <p className="lp-hero__sub">Grupo de estudio gratuito donde el código se aprende entre ronroneos</p>
+            <Link to="/login" className="lp-btn lp-btn--lime">Unirse gratis</Link>
           </div>
+          <img className="lp-hero__cat" src="/images/mascot/cat-laptop.png" alt="Gato de Code Cats Studio programando en su laptop" width={474} height={371} fetchPriority="high" />
+        </div>
+        <img className="lp-hero__badge" src="/images/brand/logo-badge.png" alt="" aria-hidden="true" width={128} height={128} />
+      </section>
 
-          {/* Estado de Carga */}
-          {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((skeleton) => (
-                <div
-                  key={skeleton}
-                  className="rounded-2xl p-6 h-80 animate-pulse flex flex-col justify-between"
-                  style={{
-                    background: 'var(--bg-primary)',
-                    border: '1.5px solid var(--border)',
-                  }}
-                >
-                  <div>
-                    <div className="h-4 w-24 rounded bg-gray-200 mb-3" />
-                    <div className="h-6 w-3/4 rounded bg-gray-200 mb-2" />
-                    <div className="h-3 w-1/2 rounded bg-gray-100" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 w-full rounded bg-gray-100" />
-                    <div className="h-3 w-5/6 rounded bg-gray-100" />
-                  </div>
-                  <div className="h-4 w-1/3 rounded bg-gray-200" />
+      <Marquee />
+
+      {/* Sobre nosotros */}
+      <section id="sobre-nosotros" className="lp-about" aria-labelledby="lp-about-title">
+        <div className="lp-about__panel">
+          <p className="lp-eyebrow lp-reveal">Sobre Nosotros</p>
+          <h2 id="lp-about-title" className="lp-title lp-title--lg lp-reveal" style={{ ['--d' as string]: '0.08s' }}>Somos devs que aprenden juntos</h2>
+          <p className="lp-about__text lp-reveal" style={{ ['--d' as string]: '0.16s' }}>
+            Un grupo de estudio donde el único requisito es tener ganas, sin costos, sin juicios, con gatos.
+          </p>
+          <div className="lp-stats">
+            {ABOUT_STATS.map((s, i) => (
+              <div className="lp-stat lp-reveal" key={s.label} style={{ ['--d' as string]: `${0.2 + i * 0.1}s` }}>
+                <strong><CountUp to={s.value} suffix={s.suffix} /></strong>
+                <span>{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="lp-points">
+          {ABOUT_POINTS.map((p, i) => (
+            <div className="lp-point lp-reveal" key={p.title} style={{ ['--d' as string]: `${i * 0.1}s` }}>
+              <span className="lp-point__n" aria-hidden="true">{pad2(i + 1)}</span>
+              <div>
+                <h3>{p.title}</h3>
+                <p>{p.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Cursos */}
+      <section id="cursos" className="lp-courses" aria-labelledby="lp-courses-title">
+        <div className="lp-head">
+          <div>
+            <p className="lp-eyebrow lp-reveal">Lo que enseñamos</p>
+            <h2 id="lp-courses-title" className="lp-title lp-title--xl lp-reveal" style={{ ['--d' as string]: '0.08s' }}>Cursos</h2>
+          </div>
+          <Link to="/cursos" className="lp-link lp-reveal">Ver todos</Link>
+        </div>
+
+        <div className="lp-rows">
+          {loading && [0, 1, 2].map((i) => <div className="lp-skeleton" key={i} style={{ marginBottom: '1rem' }} />)}
+          {!loading && error && <p role="alert">No pudimos cargar los cursos. Recarga la página para reintentar.</p>}
+          {!loading && !error && courses.slice(0, 4).map((course, i) => (
+            <Link to={`/${course.slug}`} className="lp-row lp-reveal" key={course.slug} style={{ ['--d' as string]: `${i * 0.08}s` }}>
+              <span className="lp-row__n" aria-hidden="true">{pad2(i + 1)}</span>
+              <div>
+                <h3>{course.title}</h3>
+                <p>{course.subtitle}</p>
+              </div>
+              <div className="lp-chips">
+                {courseChips(course).map((chip) => (
+                  <span className={`lp-chip lp-chip--${chip.tone}`} key={chip.label}>{chip.label}</span>
+                ))}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Proyectos */}
+      <section id="proyectos" className="lp-projects" aria-labelledby="lp-projects-title">
+        <div className="lp-head">
+          <div>
+            <p className="lp-eyebrow lp-reveal">Lo que construimos</p>
+            <h2 id="lp-projects-title" className="lp-title lp-title--xl lp-reveal" style={{ ['--d' as string]: '0.08s' }}>Proyectos</h2>
+          </div>
+          <Link to="/cursos" className="lp-link lp-link--light lp-reveal">Ver todos</Link>
+        </div>
+        <div className="lp-cards">
+          {PROJECTS.map((p, i) => (
+            <article className="lp-card lp-reveal" key={p.title} style={{ ['--d' as string]: `${i * 0.1}s` }}>
+              <span className="lp-soon">Próximamente</span>
+              <img src={p.image} alt="" loading="lazy" />
+              <div>
+                <h3>{p.title}</h3>
+                <div className="lp-chips" style={{ marginTop: '0.75rem' }}>
+                  {p.stack.map((s) => <span className="lp-chip lp-chip--lime" key={s}>{s}</span>)}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Estado de Error */}
-          {!isLoading && error && (
-            <div
-              className="p-6 rounded-2xl text-center"
-              style={{
-                background: '#FEF2F2',
-                border: '1.5px solid #FCA5A5',
-                color: '#991B1B',
-              }}
-            >
-              <p className="font-semibold mb-2">No se pudieron cargar los cursos</p>
-              <p className="text-sm text-red-600 mb-4">{error}</p>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer"
-                style={{ background: 'var(--azul-gatuno)' }}
-              >
-                Reintentar
-              </button>
-            </div>
-          )}
-
-          {/* Lista de Cursos Renderizados Dinámicamente */}
-          {!isLoading && !error && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
-                <CourseCard
-                  key={course.slug}
-                  slug={course.slug}
-                  title={course.title}
-                  subtitle={course.subtitle}
-                  description={course.description}
-                  duration={course.duration}
-                  level={course.level}
-                  lessons={course.lessons}
-                  sections={course.sections}
-                  accentColor={course.accentColor}
-                  mascotImage={course.mascotImage}
-                  comingSoon={course.comingSoon}
-                  startDate={course.startDate}
-                />
-              ))}
-            </div>
-          )}
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="py-16 px-6" style={{ background: 'var(--bg-primary)' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div
-                className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
-                style={{ background: 'var(--bg-accent-soft)' }}
-              >
-                💻
-              </div>
-              <h3
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '1.125rem',
-                  fontWeight: 700,
-                  margin: '0 0 0.5rem',
-                }}
-              >
-                100% Práctico
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-                Aprende construyendo proyectos reales desde el primer día.
-              </p>
-            </div>
-            <div className="text-center p-6">
-              <div
-                className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
-                style={{ background: 'var(--bg-lime-soft)' }}
-              >
-                🇪🇸
-              </div>
-              <h3
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '1.125rem',
-                  fontWeight: 700,
-                  margin: '0 0 0.5rem',
-                }}
-              >
-                En Español
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-                Contenido claro y directo, sin barreras de idioma.
-              </p>
-            </div>
-            <div className="text-center p-6">
-              <div
-                className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
-                style={{ background: 'var(--bg-accent-soft)' }}
-              >
-                🎯
-              </div>
-              <h3
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '1.125rem',
-                  fontWeight: 700,
-                  margin: '0 0 0.5rem',
-                }}
-              >
-                A tu ritmo
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-                Sin fechas límite. Tu progreso se guarda automáticamente.
-              </p>
-            </div>
+      {/* ¿Te sumas? */}
+      <section className="lp-join" aria-labelledby="lp-join-title">
+        <h2 id="lp-join-title" className="lp-title lp-title--xl lp-reveal">¿Te sumas a la comunidad?</h2>
+        <Link to="/login" className="lp-btn lp-btn--navy lp-reveal" style={{ ['--d' as string]: '0.15s' }}>Unirse gratis</Link>
+        <img className="lp-join__cat" src="/images/mascot/cat-peek.png" alt="" aria-hidden="true" loading="lazy" />
+      </section>
+
+      {/* Encuéntranos */}
+      <section id="encuentranos" className="lp-find" aria-labelledby="lp-find-title">
+        <div className="lp-find__left">
+          <p className="lp-eyebrow lp-reveal">Encuéntranos</p>
+          <h2 id="lp-find-title" className="lp-title lp-title--lg lp-reveal" style={{ ['--d' as string]: '0.08s' }}>Estamos en todas partes</h2>
+          <div className="lp-socials">
+            {SOCIALS.map((s, i) => (
+              <a className="lp-social lp-reveal" key={s.name} href={s.url} target="_blank" rel="noopener noreferrer"
+                style={{ ['--d' as string]: `${i * 0.08}s` }}>
+                <span className="lp-social__ico" aria-hidden="true">{s.short}</span>
+                {s.name}
+              </a>
+            ))}
           </div>
         </div>
+        <div className="lp-find__right">
+          <img src="/images/mascot/cat-falling.png" alt="" aria-hidden="true" loading="lazy" />
+        </div>
       </section>
-    </>
+    </div>
   );
 }
