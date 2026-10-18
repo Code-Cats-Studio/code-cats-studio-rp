@@ -3,19 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 import type { UserProfileUpdateInput } from '../types/auth';
-
-// Departamentos oficiales de emisión de cédula de identidad en Bolivia (tabla regions)
-export const BOLIVIA_REGIONS = [
-  { id: 1, code: 'LP', name: 'La Paz' },
-  { id: 2, code: 'OR', name: 'Oruro' },
-  { id: 3, code: 'PO', name: 'Potosí' },
-  { id: 4, code: 'CB', name: 'Cochabamba' },
-  { id: 5, code: 'CH', name: 'Chuquisaca' },
-  { id: 6, code: 'TJ', name: 'Tarija' },
-  { id: 7, code: 'SC', name: 'Santa Cruz' },
-  { id: 8, code: 'BE', name: 'Beni' },
-  { id: 9, code: 'PD', name: 'Pando' },
-] as const;
+import { fetchRegions, type Region } from '../services/account';
+import TeacherApplication from '../components/account/TeacherApplication';
 
 interface FormData {
   full_name: string;
@@ -49,6 +38,7 @@ export default function RegistroPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showEditMode, setShowEditMode] = useState<boolean>(false);
+  const [regions, setRegions] = useState<Region[]>([]);
 
   const fullNameId = useId();
   const docNumberId = useId();
@@ -59,6 +49,10 @@ export default function RegistroPage() {
   const institutionId = useId();
   const degreeId = useId();
   const termsId = useId();
+
+  useEffect(() => {
+    void fetchRegions().then(setRegions);
+  }, []);
 
   useEffect(() => {
     setPageMeta(
@@ -333,6 +327,9 @@ export default function RegistroPage() {
             </button>
           </div>
         </section>
+        <div className="max-w-2xl mx-auto mt-6">
+          <TeacherApplication />
+        </div>
       </main>
     );
   }
@@ -545,9 +542,9 @@ export default function RegistroPage() {
                 className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
               >
                 <option value="">Selecciona...</option>
-                {BOLIVIA_REGIONS.map((region) => (
+                {regions.map((region) => (
                   <option key={region.id} value={region.id}>
-                    {region.name} ({region.code})
+                    {region.name}
                   </option>
                 ))}
               </select>
@@ -666,8 +663,11 @@ export default function RegistroPage() {
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
               />
               <span className="text-xs text-gray-700 leading-relaxed">
-                Acepto los términos de servicio y las políticas de privacidad de Code Cats
-                Studio. Confirmo que los datos proporcionados son fidedignos para la emisión de
+                Acepto los{' '}
+                <Link to="/terminos" target="_blank" className="underline" style={{ color: 'var(--azul-gatuno)' }}>términos de servicio</Link>{' '}
+                y la{' '}
+                <Link to="/privacidad" target="_blank" className="underline" style={{ color: 'var(--azul-gatuno)' }}>política de privacidad</Link>{' '}
+                de Code Cats Studio. Confirmo que los datos proporcionados son fidedignos para la emisión de
                 certificados oficiales. *
               </span>
             </label>
@@ -707,6 +707,7 @@ export default function RegistroPage() {
             </button>
           </div>
         </form>
+        {isProfileComplete && <TeacherApplication />}
       </section>
     </main>
   );

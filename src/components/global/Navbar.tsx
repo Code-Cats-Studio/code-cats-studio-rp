@@ -6,7 +6,8 @@ interface Props {
 }
 
 export default function Navbar({ courseName }: Props) {
-  const { user, profile, isProfileComplete, isLoading, signInWithGoogle, signOut } = useAuth();
+  const { user, profile, roles, isProfileComplete, isLoading, signInWithGoogle, signOut } = useAuth();
+  const isStaff = roles.includes('teacher') || roles.includes('admin');
 
   const avatarUrl =
     profile?.avatar_url ||
@@ -42,7 +43,7 @@ export default function Navbar({ courseName }: Props) {
             Completa tu perfil para inscribirte a los cursos
           </span>
           <Link
-            to="/registro"
+            to="/perfil"
             className="font-bold underline hover:opacity-80 transition-opacity ml-1 flex-shrink-0"
             style={{ color: '#DC2626' }}
           >
@@ -144,9 +145,22 @@ export default function Navbar({ courseName }: Props) {
               </button>
             ) : (
               <div className="flex items-center gap-3">
+                <Link to="/mis-cursos" className="hidden md:inline text-xs font-semibold no-underline" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-secondary)' }}>
+                  Mis cursos
+                </Link>
+                {isStaff && (
+                  <Link to="/docente" className="hidden md:inline text-xs font-semibold no-underline" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-secondary)' }}>
+                    Docente
+                  </Link>
+                )}
+                {roles.includes('admin') && (
+                  <Link to="/admin" className="hidden md:inline text-xs font-semibold no-underline" style={{ fontFamily: 'var(--font-heading)', color: 'var(--azul-gatuno)' }}>
+                    Admin
+                  </Link>
+                )}
                 {/* Tarjeta de usuario / Perfil */}
                 <Link
-                  to="/registro"
+                  to="/perfil"
                   className="flex items-center gap-2 p-1 pr-2.5 rounded-full no-underline transition-all"
                   style={{
                     border: isProfileComplete

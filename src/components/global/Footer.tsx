@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function Footer() {
   return (
     <footer style={{ background: "var(--bg-secondary)", borderTop: "1px solid var(--border)" }}>
@@ -19,6 +21,10 @@ export default function Footer() {
           <span>·</span>
           <span>Aprende desarrollo web con cursos prácticos</span>
         </div>
+        <nav aria-label="Legal" className="flex items-center gap-4" style={{ fontSize: "0.875rem" }}>
+          <Link to="/terminos" style={{ color: "var(--text-muted)" }}>Términos</Link>
+          <Link to="/privacidad" style={{ color: "var(--text-muted)" }}>Privacidad</Link>
+        </nav>
         <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", margin: 0 }}>
           Hecho con 🐱 para la comunidad
         </p>

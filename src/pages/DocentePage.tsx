@@ -7,6 +7,8 @@ import {
   type RosterStudent,
   type AssignmentSubmission,
 } from '../services/teacher';
+import SubmissionFiles from '../components/course/SubmissionFiles';
+import { fetchFilesBySubmission, type SubmissionFile } from '../services/submissions';
 import { buildGoogleCalendarUrl, type LiveSession } from '../services/liveSessions';
 
 type DocenteTab = 'asistencia' | 'roster' | 'calificaciones';
@@ -90,6 +92,7 @@ export default function DocentePage() {
 
   // Estado del Modal de Calificación
   const [selectedSubmission, setSelectedSubmission] = useState<AssignmentSubmission | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<SubmissionFile[]>([]);
   const [scoreInput, setScoreInput] = useState<number | ''>('');
   const [feedbackInput, setFeedbackInput] = useState<string>('');
   const [isSavingGrade, setIsSavingGrade] = useState<boolean>(false);
@@ -136,6 +139,8 @@ export default function DocentePage() {
   // Abrir modal de calificación
   const handleOpenGradeModal = (submission: AssignmentSubmission) => {
     setSelectedSubmission(submission);
+    setSelectedFiles([]);
+    void fetchFilesBySubmission(submission.id).then(setSelectedFiles);
     setScoreInput(submission.score ?? '');
     setFeedbackInput(submission.feedback ?? '');
     setGradeModalError(null);
@@ -880,7 +885,7 @@ export default function DocentePage() {
               aria-labelledby="modal-grade-title"
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
             >
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-xl max-w-md w-full p-6 text-left animate-in fade-in zoom-in-95 duration-150">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 text-left animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
                   <div>
                     <h3
@@ -913,6 +918,11 @@ export default function DocentePage() {
                     <span>{gradeModalError}</span>
                   </div>
                 )}
+
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Archivos entregados</p>
+                  <SubmissionFiles files={selectedFiles} />
+                </div>
 
                 <form onSubmit={(e) => void handleSaveGrade(e)} className="space-y-4">
                   {/* Nota / Score */}
