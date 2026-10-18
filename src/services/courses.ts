@@ -1,4 +1,7 @@
 import type { ComponentType } from 'react';
+import { supabase } from '../lib/supabase';
+
+// ─── Interfaces ─────────────────────────────────────────────────────────────
 
 export interface Instructor {
   name: string;
@@ -8,7 +11,19 @@ export interface Instructor {
   weeks: string;
 }
 
+export interface CourseOffering {
+  id: string;
+  label: string;
+  status: 'draft' | 'open' | 'in_progress' | 'finished' | 'cancelled';
+  modality?: string;
+  capacity?: number;
+  starts_on?: string;
+  ends_on?: string;
+  enrollment_closes_at?: string;
+}
+
 export interface Course {
+  id?: string;
   slug: string;
   title: string;
   subtitle: string;
@@ -22,6 +37,8 @@ export interface Course {
   comingSoon?: boolean;
   startDate?: string;
   instructors?: Instructor[];
+  topics?: Array<{ name: string }>;
+  course_offerings?: CourseOffering[];
 }
 
 export interface LessonMeta {
@@ -42,6 +59,29 @@ export interface SectionMeta {
   duration: string;
   lessons: LessonMeta[];
 }
+
+export interface CourseSyllabusItem {
+  id?: string;
+  course_id: string;
+  module_position: number;
+  module_title: string;
+  lesson_position: number;
+  lesson_title: string;
+  duration_seconds?: number;
+}
+
+export interface OfferingAvailability {
+  capacity: number;
+  taken: number;
+  available: number;
+}
+
+export interface EnrollmentResponse {
+  status?: 'active' | 'waitlisted' | 'pending_payment';
+  error?: string;
+}
+
+// ─── Contenido Local MDX (para el visor interactivo de clases) ─────────────
 
 export interface LessonFrontmatter {
   title: string;
@@ -65,24 +105,226 @@ interface SectionFile {
   duration?: string;
 }
 
-const courseFiles = import.meta.glob<{ default: Course }>(
+const localCourseFiles = import.meta.glob<{ default: Course }>(
   '../content/courses/*.json',
-  { eager: true },
+  { eager: true }
 );
 
 const sectionFiles = import.meta.glob<{ default: SectionFile }>(
   '../content/lessons/**/section.json',
-  { eager: true },
+  { eager: true }
 );
 
 const lessonFiles = import.meta.glob<LessonModule>(
   '../content/lessons/**/*.mdx',
-  { eager: true },
+  { eager: true }
 );
+
+// ─── Servicios con Supabase (Paso 3 y 4 de GUIA_FRONTEND.md) ────────────────
+
+/**
+ * Consulta en Supabase todos los cursos publicados con sus ediciones y temas.
+ * Si Supabase no tiene registros (o está en entorno offline/setup), provee fallback ordenado.
+ */
+export async function fetchPublishedCourses(): Promise<Course[]> {
+  try {
+    const { data, error } = await supabase
+      .from('courses')
+      .select(
+        '*, topics(name), course_offerings(id,label,status,modality,capacity,starts_on,ends_on,enrollment_closes_at)'
+      )
+      .eq('is_published', true);
+
+    if (error) {
+      console.warn('[CoursesService] Error al consultar courses en Supabase:', error.message);
+      return getAllCourses();
+    }
+
+    if (!data || data.length === 0) {
+      // Fallback a cursos locales si aún no se han insertado datos en la base
+      return getAllCourses();
+    }
+
+    // Mapear registros de Supabase a la interfaz Course
+    return data.map((item: any) => {
+      const localFallback = getAllCourses().find((c) => c.slug === item.slug);
+      const offerings: CourseOffering[] = item.course_offerings || [];
+      const primaryOffering = offerings.find((o) => o.status === 'open') || offerings[0];
+
+      return {
+        id: item.id,
+        slug: item.slug,
+        title: item.title,
+        subtitle: item.subtitle || localFallback?.subtitle || 'Curso oficial en Code Cats Studio',
+        description: item.description || localFallback?.description || '',
+        duration: item.duration || localFallback?.duration || '6 semanas',
+        level: item.level || localFallback?.level || 'Principiante',
+        mascotImage: item.mascot_image || localFallback?.mascotImage || 'cat-sitting',
+        accentColor: item.accent_color || localFallback?.accentColor || '#4142F5',
+        sections: item.sections_count || localFallback?.sections || 6,
+        lessons: item.lessons_count || localFallback?.lessons || 18,
+        comingSoon: !offerings.some((o) => o.status === 'open'),
+        startDate: primaryOffering?.starts_on || localFallback?.startDate,
+        topics: item.topics,
+        course_offerings: offerings,
+        instructors: localFallback?.instructors,
+      };
+    });
+  } catch (err) {
+    console.error('[CoursesService] Excepción al consultar courses en Supabase:', err);
+    return getAllCourses();
+  }
+}
+
+/**
+ * Consulta un curso específico por slug con sus ofertas desde Supabase.
+ */
+export async function fetchCourseBySlug(slug: string): Promise<Course | undefined> {
+  try {
+    const { data, error } = await supabase
+      .from('courses')
+      .select(
+        '*, topics(name), course_offerings(id,label,status,modality,capacity,starts_on,ends_on,enrollment_closes_at)'
+      )
+      .eq('slug', slug)
+      .single();
+
+    if (error || !data) {
+      return getCourseBySlug(slug);
+    }
+
+    const localFallback = getCourseBySlug(slug);
+    const offerings: CourseOffering[] = data.course_offerings || [];
+    const primaryOffering = offerings.find((o) => o.status === 'open') || offerings[0];
+
+    return {
+      id: data.id,
+      slug: data.slug,
+      title: data.title,
+      subtitle: data.subtitle || localFallback?.subtitle || 'Curso oficial',
+      description: data.description || localFallback?.description || '',
+      duration: data.duration || localFallback?.duration || '6 semanas',
+      level: data.level || localFallback?.level || 'Principiante',
+      mascotImage: data.mascot_image || localFallback?.mascotImage || 'cat-sitting',
+      accentColor: data.accent_color || localFallback?.accentColor || '#4142F5',
+      sections: data.sections_count || localFallback?.sections || 6,
+      lessons: data.lessons_count || localFallback?.lessons || 18,
+      comingSoon: !offerings.some((o) => o.status === 'open'),
+      startDate: primaryOffering?.starts_on || localFallback?.startDate,
+      topics: data.topics,
+      course_offerings: offerings,
+      instructors: localFallback?.instructors,
+    };
+  } catch {
+    return getCourseBySlug(slug);
+  }
+}
+
+/**
+ * Consulta el sílabo ordenado de un curso desde la vista/tabla course_syllabus.
+ */
+export async function fetchCourseSyllabus(courseId: string): Promise<CourseSyllabusItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('course_syllabus')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('module_position')
+      .order('lesson_position');
+
+    if (error) {
+      console.warn('[CoursesService] Error al obtener course_syllabus:', error.message);
+      return [];
+    }
+
+    return (data as CourseSyllabusItem[]) || [];
+  } catch (err) {
+    console.error('[CoursesService] Error inesperado en fetchCourseSyllabus:', err);
+    return [];
+  }
+}
+
+/**
+ * Consulta los cupos disponibles de una edición específica en offering_availability.
+ * Devuelve: { capacity, taken, available }
+ */
+export async function fetchOfferingAvailability(
+  offeringId: string
+): Promise<OfferingAvailability | null> {
+  try {
+    const { data, error } = await supabase
+      .from('offering_availability')
+      .select('capacity,taken,available')
+      .eq('offering_id', offeringId)
+      .single();
+
+    if (error || !data) {
+      console.warn('[CoursesService] Error en offering_availability:', error?.message);
+      return null;
+    }
+
+    return data as OfferingAvailability;
+  } catch (err) {
+    console.error('[CoursesService] Error al consultar offering_availability:', err);
+    return null;
+  }
+}
+
+/**
+ * Realiza la inscripción de un estudiante mediante la RPC enroll_in_offering.
+ * Respuestas:
+ * - status: 'active' | 'waitlisted'
+ * - error.message: Texto descriptivo en español si no cumple requisitos (perfil, cupo, etc.)
+ */
+export async function enrollInOffering(
+  offeringId: string
+): Promise<{ status?: 'active' | 'waitlisted' | 'pending_payment'; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('enroll_in_offering', {
+      p_offering: offeringId,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { status: data };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : 'Error inesperado al procesar la inscripción.',
+    };
+  }
+}
+
+/**
+ * Verifica si el usuario actual ya está inscrito en la edición indicada.
+ */
+export async function checkMyEnrollment(
+  offeringId: string
+): Promise<{ isEnrolled: boolean; status?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('id, status, course_offerings(id)')
+      .eq('offering_id', offeringId)
+      .maybeSingle();
+
+    if (error || !data) {
+      return { isEnrolled: false };
+    }
+
+    return { isEnrolled: true, status: data.status };
+  } catch {
+    return { isEnrolled: false };
+  }
+}
+
+// ─── Funciones Síncronas Locales (Compatibilidad MDX) ──────────────────────
 
 function parseLessonPath(filePath: string) {
   const match = filePath.replace(/\\/g, '/').match(
-    /content\/lessons\/([^/]+)\/([^/]+)\/([^/]+)\.mdx$/,
+    /content\/lessons\/([^/]+)\/([^/]+)\/([^/]+)\.mdx$/
   );
   if (!match) return null;
 
@@ -95,12 +337,12 @@ function parseLessonPath(filePath: string) {
 
 function getSectionMeta(
   courseSlug: string,
-  sectionFolder: string,
+  sectionFolder: string
 ): Omit<SectionMeta, 'lessons'> {
   const key = Object.keys(sectionFiles).find((path) =>
     path.replace(/\\/g, '/').endsWith(
-      `/content/lessons/${courseSlug}/${sectionFolder}/section.json`,
-    ),
+      `/content/lessons/${courseSlug}/${sectionFolder}/section.json`
+    )
   );
   const data = key ? (sectionFiles[key].default ?? {}) : {};
 
@@ -114,7 +356,7 @@ function getSectionMeta(
 }
 
 export function getAllCourses(): Course[] {
-  return Object.values(courseFiles).map((mod) => mod.default);
+  return Object.values(localCourseFiles).map((mod) => mod.default);
 }
 
 export function getCourseBySlug(slug: string): Course | undefined {
@@ -156,17 +398,17 @@ export function getCourseSections(courseSlug: string): SectionMeta[] {
 }
 
 export function flattenLessons(
-  sections: SectionMeta[],
+  sections: SectionMeta[]
 ): Array<{ sectionSlug: string; lesson: LessonMeta }> {
   return sections.flatMap((section) =>
-    section.lessons.map((lesson) => ({ sectionSlug: section.slug, lesson })),
+    section.lessons.map((lesson) => ({ sectionSlug: section.slug, lesson }))
   );
 }
 
 export function getLessonModule(
   courseSlug: string,
   sectionSlug: string,
-  lessonSlug: string,
+  lessonSlug: string
 ): LessonModule | undefined {
   const entry = Object.entries(lessonFiles).find(([filePath]) => {
     const parsed = parseLessonPath(filePath);

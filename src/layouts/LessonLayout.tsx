@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../components/course/Sidebar';
 import LessonNav from '../components/course/LessonNav';
 import CompleteButton from '../components/course/CompleteButton';
+import YouTubePlayer from '../components/course/YouTubePlayer';
+import CheckinForm from '../components/course/CheckinForm';
 import type { SectionMeta } from '../services/courses';
 
 interface LessonRef {
@@ -161,7 +163,20 @@ export default function LessonLayout({
             )}
           </div>
 
+          {/* Reproductor de YouTube con dominio extendido y reporte de watch time a Supabase */}
+          <YouTubePlayer
+            lessonId={`${currentSection}/${currentLesson}`}
+            courseSlug={courseSlug}
+            sectionSlug={currentSection}
+            lessonSlug={currentLesson}
+          />
+
           <div className="prose">{children}</div>
+
+          {/* Formulario de Asistencia con código de 6 dígitos y enlace a Google Calendar */}
+          <div className="my-10">
+            <CheckinForm courseTitle={courseTitle} />
+          </div>
 
           <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
             <CompleteButton

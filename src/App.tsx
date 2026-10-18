@@ -1,5 +1,19 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import MainLayout from './layouts/MainLayout';
+import HomePage from './pages/HomePage';
+import CoursePage from './pages/CoursePage';
+import LessonPage from './pages/LessonPage';
+import EventoPage from './pages/EventoPage';
+import RegistroPage from './pages/RegistroPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/:courseSlug/:sectionSlug/:lessonSlug" element={<LessonPage />} />
 
 // The event loads independently of course content, and GSAP stays off course routes.
 const MainLayout = lazy(() => import('./layouts/MainLayout'));
@@ -27,6 +41,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
+    </AuthProvider>
     </Suspense>
   );
 }
