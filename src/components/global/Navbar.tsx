@@ -22,7 +22,6 @@ export default function Navbar({ courseName }: Props) {
 
   return (
     <header className="sticky top-0 z-40">
-      {/* Banner de alerta discreto si el usuario no ha completado su perfil */}
       {user && !isProfileComplete && (
         <aside
           aria-label="Aviso de perfil incompleto"
@@ -51,7 +50,6 @@ export default function Navbar({ courseName }: Props) {
         </aside>
       )}
 
-      {/* Barra de navegación principal */}
       <nav
         style={{
           background: 'var(--bg-primary)',
@@ -59,8 +57,8 @@ export default function Navbar({ courseName }: Props) {
         }}
       >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          {/* Logo y título */}
           <Link to="/" className="flex items-center gap-3 no-underline group flex-shrink-0">
+            {/* Cambia el nombre del archivo aquí por el nuevo gato */}
             <img
               src="/images/mascot/cat-peek.png"
               alt="Code Cats Studio mascota"
@@ -78,7 +76,6 @@ export default function Navbar({ courseName }: Props) {
             </span>
           </Link>
 
-          {/* Sección derecha: Curso activo y Estado de Autenticación */}
           <div className="flex items-center gap-4">
             {courseName && (
               <span
@@ -120,7 +117,6 @@ export default function Navbar({ courseName }: Props) {
                   e.currentTarget.style.color = 'var(--text-primary)';
                 }}
               >
-                {/* Ícono de Google */}
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     fill="#4285F4"
@@ -144,7 +140,6 @@ export default function Navbar({ courseName }: Props) {
               </button>
             ) : (
               <div className="flex items-center gap-3">
-                {/* Tarjeta de usuario / Perfil */}
                 <Link
                   to="/registro"
                   className="flex items-center gap-2 p-1 pr-2.5 rounded-full no-underline transition-all"
@@ -176,8 +171,6 @@ export default function Navbar({ courseName }: Props) {
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
-
-                    {/* Indicador rojo si el perfil no está completo */}
                     {!isProfileComplete && (
                       <span
                         className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
@@ -186,7 +179,6 @@ export default function Navbar({ courseName }: Props) {
                       />
                     )}
                   </div>
-
                   <span
                     className="text-xs font-semibold max-w-[120px] truncate hidden sm:inline-block"
                     style={{
@@ -198,7 +190,6 @@ export default function Navbar({ courseName }: Props) {
                   </span>
                 </Link>
 
-                {/* Botón Cerrar Sesión */}
                 <button
                   type="button"
                   onClick={() => void signOut()}
@@ -230,4 +221,3 @@ export default function Navbar({ courseName }: Props) {
     </header>
   );
 }
-
