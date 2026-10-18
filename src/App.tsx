@@ -1,71 +1,94 @@
 
+import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
-import MainLayout from './layouts/MainLayout';
+import AdminRoute from './components/admin/AdminRoute';
 
-import HomePage from './pages/HomePage';
-import CoursePage from './pages/CoursePage';
-import LessonPage from './pages/LessonPage';
-import EventoPage from './pages/EventoPage';
-import RegistroPage from './pages/RegistroPage';
-import NotFoundPage from './pages/NotFoundPage';
+// Páginas del proyecto
+const MainLayout = lazy(() => import('./layouts/MainLayout'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const CoursePage = lazy(() => import('./pages/CoursePage'));
+const LessonPage = lazy(() => import('./pages/LessonPage'));
+const EventoPage = lazy(() => import('./pages/EventoPage'));
+const RegistroPage = lazy(() => import('./pages/RegistroPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const CodeCatsDaysPage = lazy(() => import('./pages/CodeCatsDaysPage'));
 
 // Panel de Administración
-import AdminPage from './pages/AdminPage';
-import AdminRoute from './components/admin/AdminRoute';
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
+      <Suspense
+        fallback={
+          <main
+            role="status"
+            style={{
+              minHeight: '100dvh',
+              padding: '32px',
+              fontFamily: 'system-ui',
+            }}
+          >
+            Cargando…
+          </main>
+        }
+      >
+        <Routes>
 
-        {/* Página de lecciones */}
-        <Route
-          path="/:courseSlug/:sectionSlug/:lessonSlug"
-          element={<LessonPage />}
-        />
-
-        <Route element={<MainLayout />}>
-
-          {/* Páginas generales */}
-          <Route path="/" element={<HomePage />} />
-
+          {/* Lecciones */}
           <Route
-            path="/evento"
-            element={<EventoPage />}
+            path="/:courseSlug/:sectionSlug/:lessonSlug"
+            element={<LessonPage />}
           />
 
+          {/* Evento Code Cats Days */}
           <Route
-            path="/registro"
-            element={<RegistroPage />}
+            path="/code-cats-days"
+            element={<CodeCatsDaysPage />}
           />
 
-          {/* Panel real: acceso exclusivo para administradores */}
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminPage />
-              </AdminRoute>
-            }
-          />
+          <Route element={<MainLayout />}>
 
-          {/* Página de cursos */}
-          <Route
-            path="/:courseSlug"
-            element={<CoursePage />}
-          />
+            {/* Páginas generales */}
+            <Route path="/" element={<HomePage />} />
 
-          {/* Página no encontrada */}
-          <Route
-            path="*"
-            element={<NotFoundPage />}
-          />
+            <Route
+              path="/evento"
+              element={<EventoPage />}
+            />
 
-        </Route>
+            <Route
+              path="/registro"
+              element={<RegistroPage />}
+            />
 
-      </Routes>
+            {/* Panel exclusivo para administradores */}
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              }
+            />
+
+            {/* Cursos */}
+            <Route
+              path="/:courseSlug"
+              element={<CoursePage />}
+            />
+
+            {/* Página no encontrada */}
+            <Route
+              path="*"
+              element={<NotFoundPage />}
+            />
+
+          </Route>
+        </Routes>
+      </Suspense>
     </AuthProvider>
   );
 }
