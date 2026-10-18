@@ -5,6 +5,7 @@ interface Props {
   courseSlug?: string;
   sectionSlug?: string;
   lessonSlug?: string;
+  onChange?: (completed: boolean) => void;
 }
 
 const STORAGE_KEY = "gatuno-completed";
@@ -134,6 +135,7 @@ export default function CompleteButton(props: Props) {
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       setIsCompleted(nextState);
+      props.onChange?.(nextState);
 
       // Disparar evento global para actualizar Sidebar.tsx inmediatamente
       const event = new CustomEvent("lesson-completed", {

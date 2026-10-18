@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   checkinAttendance,
   buildGoogleCalendarUrl,
   type LiveSession,
 } from '../../services/liveSessions';
+import { fetchMyUpcomingClasses, type UpcomingClass } from '../../services/schedules';
 
 interface CheckinFormProps {
   session?: LiveSession | null;
@@ -18,11 +19,30 @@ export default function CheckinForm({
 }: CheckinFormProps) {
   const [code, setCode] = useState<string>('');
   const [sessionIdInput, setSessionIdInput] = useState<string>(session?.id || '');
+  const [myClasses, setMyClasses] = useState<UpcomingClass[]>([]);
+  const [loadedClasses, setLoadedClasses] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const targetSessionId = session?.id || sessionIdInput;
+
+  // El estudiante elige su clase de una lista (nunca pega un ID). Solo se ofrecen las clases en curso o por empezar.
+  useEffect(() => {
+    if (session) return;
+    let alive = true;
+    void fetchMyUpcomingClasses().then((all) => {
+      if (!alive) return;
+      const now = Date.now();
+      const open = all.filter((c) => now >= new Date(c.starts_at).getTime() - 15 * 60000 && now <= new Date(c.ends_at).getTime() + 30 * 60000);
+      setMyClasses(open);
+      setSessionIdInput((current) => current || open[0]?.id || '');
+      setLoadedClasses(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [session]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,7 +50,7 @@ export default function CheckinForm({
     setSuccessMessage(null);
 
     if (!targetSessionId.trim()) {
-      setErrorMessage('Es necesario especificar el identificador de la sesión en vivo.');
+      setErrorMessage('No hay una clase en vivo disponible para marcar asistencia.');
       return;
     }
 
@@ -142,19 +162,26 @@ export default function CheckinForm({
 
       {/* Formulario */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        {!session && (
+        {!session && loadedClasses && myClasses.length === 0 && (
+          <p className="text-xs text-gray-500">
+            No hay una clase en vivo en este momento. Cuando empiece, aparecerá aquí para que marques tu asistencia.
+          </p>
+        )}
+        {!session && myClasses.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold mb-1 text-gray-500">
-              ID de la Sesión en vivo:
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="UUID de la sesión"
+            <label className="block text-xs font-semibold mb-1 text-gray-500">Clase:</label>
+            <select
               value={sessionIdInput}
               onChange={(e) => setSessionIdInput(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+              className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              {myClasses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title} · {c.course_title} ·{' '}
+                  {new Date(c.starts_at).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/La_Paz' })}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -173,7 +200,7 @@ export default function CheckinForm({
 
           <button
             type="submit"
-            disabled={isSubmitting || code.length !== 6}
+            disabled={isSubmitting || code.length !== 6 || !targetSessionId}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: 'var(--azul-gatuno)',

@@ -9,7 +9,7 @@ declare global {
 }
 
 interface YouTubePlayerProps {
-  videoId?: string;
+  videoId: string;
   lessonId: string;
   courseSlug?: string;
   sectionSlug?: string;
@@ -18,7 +18,7 @@ interface YouTubePlayerProps {
 }
 
 export default function YouTubePlayer({
-  videoId = 'dQw4w9WgXcQ', // Video de demostración por defecto si la lección no especifica external_id
+  videoId,
   lessonId,
   courseSlug,
   sectionSlug,

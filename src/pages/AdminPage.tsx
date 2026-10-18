@@ -15,6 +15,7 @@ import {
   type PendingApplication,
   type TeacherOption,
 } from '../services/admin';
+import CoursesAdmin from '../components/admin/CoursesAdmin';
 import GroupsAdmin from '../components/admin/GroupsAdmin';
 import EventsAdmin from '../components/admin/EventsAdmin';
 import StaffAdmin from '../components/admin/StaffAdmin';
@@ -108,6 +109,8 @@ export default function AdminPage() {
           {message}
         </p>
       )}
+
+      <CoursesAdmin />
 
       {/* Solicitudes de docente */}
       <section className="mt-10" aria-labelledby="adm-apps">

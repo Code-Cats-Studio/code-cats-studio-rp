@@ -7,6 +7,8 @@ import {
   fetchOfferingAvailability,
   checkMyEnrollment,
   getCourseSections,
+  fetchDbSections,
+  type SectionMeta,
   type Course,
   type CourseOffering,
   type OfferingAvailability,
@@ -54,7 +56,10 @@ export default function CoursePage() {
     text: string;
   } | null>(null);
 
-  const sections = courseSlug ? getCourseSections(courseSlug) : [];
+  // Cursos con archivos MDX: índice local. Cursos creados desde /admin: índice desde la base de datos.
+  const localSections = courseSlug ? getCourseSections(courseSlug) : [];
+  const [dbSections, setDbSections] = useState<SectionMeta[]>([]);
+  const sections = localSections.length > 0 ? localSections : dbSections;
 
   // 1. Cargar curso y oferta activa
   useEffect(() => {
@@ -69,6 +74,11 @@ export default function CoursePage() {
         if (!isMounted) return;
 
         setCourse(foundCourse);
+
+        if (foundCourse?.id && getCourseSections(courseSlug!).length === 0) {
+          const secs = await fetchDbSections(foundCourse.id);
+          if (isMounted) setDbSections(secs);
+        }
 
         if (foundCourse) {
           setPageMeta(foundCourse.title, foundCourse.description);
@@ -122,6 +132,10 @@ export default function CoursePage() {
   const mascotSrc = `/images/mascot/${course?.mascotImage || 'cat-sitting'}.png`;
   const firstLesson = sections[0]?.lessons[0];
   const isWaitlisted = availability !== null && availability.available === 0;
+  // "Qué aprenderás": lo escrito en el curso; si no hay, los títulos de sus módulos
+  const outcomes =
+    course?.learningOutcomes ??
+    (courseSlug === 'html-css-layouts' ? learningItems : sections.map((section) => section.title));
 
   // 2. Manejador de Inscripción (Paso 4 de la guía)
   const handleEnrollment = async () => {
@@ -493,6 +507,7 @@ export default function CoursePage() {
           </div>
 
           <div className="space-y-6">
+            {courseSlug === 'html-css-layouts' && (
             <div
               className="rounded-xl p-5"
               style={{ background: 'var(--bg-secondary)', border: '1.5px solid var(--border)' }}
@@ -540,7 +555,9 @@ export default function CoursePage() {
                 ))}
               </div>
             </div>
+            )}
 
+            {outcomes.length > 0 && (
             <div
               className="rounded-xl p-5"
               style={{
@@ -560,7 +577,7 @@ export default function CoursePage() {
                 ✨ Qué aprenderás
               </h3>
               <ul className="m-0 p-0 list-none space-y-2">
-                {learningItems.map((item) => (
+                {outcomes.map((item) => (
                   <li
                     key={item}
                     className="flex items-start gap-2"
@@ -572,6 +589,7 @@ export default function CoursePage() {
                 ))}
               </ul>
             </div>
+            )}
           </div>
         </div>
       </div>

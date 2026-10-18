@@ -260,7 +260,7 @@ export default function RegistroPage() {
   if (isProfileComplete && !showEditMode) {
     return (
       <main
-        className="min-h-[calc(100vh-8rem)] px-6 py-16 flex items-center justify-center"
+        className="min-h-[calc(100vh-8rem)] px-6 py-16 flex flex-col items-center justify-center gap-6"
         style={{ background: 'var(--bg-secondary)' }}
       >
         <section
@@ -327,7 +327,7 @@ export default function RegistroPage() {
             </button>
           </div>
         </section>
-        <div className="max-w-2xl mx-auto mt-6">
+        <div className="w-full max-w-2xl">
           <TeacherApplication />
         </div>
       </main>

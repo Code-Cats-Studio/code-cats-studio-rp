@@ -11,6 +11,7 @@ import SubmissionFiles from '../components/course/SubmissionFiles';
 import { fetchFilesBySubmission, type SubmissionFile } from '../services/submissions';
 import { buildGoogleCalendarUrl, type LiveSession } from '../services/liveSessions';
 import ClassScheduler from '../components/schedule/ClassScheduler';
+import AttendanceList from '../components/schedule/AttendanceList';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchAssignmentChoices,
@@ -399,6 +400,11 @@ export default function DocentePage() {
                 <p className="text-xs md:text-sm text-gray-500">
                   Rota el código de 6 dígitos para que los estudiantes registrados puedan marcar su check-in durante la clase.
                 </p>
+                <p className="text-xs text-gray-500 mt-2 max-w-2xl">
+                  <strong>Cómo funciona:</strong> durante la clase en Meet generas un código y lo muestras en pantalla.
+                  Cada estudiante lo escribe en su página (en <em>Mis cursos → Próximas clases</em>) y queda presente
+                  automáticamente. Si alguien no puede, lo marcas tú abajo en la lista de asistencia.
+                </p>
               </div>
 
               {/* Botón Agendar en Google Calendar */}
@@ -460,6 +466,15 @@ export default function DocentePage() {
                     </option>
                   ))}
                 </select>
+                {sessionChoices.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Primero programa la clase en la pestaña{' '}
+                    <button type="button" className="underline text-indigo-600 cursor-pointer" onClick={() => setActiveTab('clases')}>
+                      Clases y horario
+                    </button>
+                    .
+                  </p>
+                )}
               </div>
 
               <div>
@@ -515,6 +530,8 @@ export default function DocentePage() {
                 </div>
               )}
             </div>
+
+            <AttendanceList sessionId={sessionId} />
 
             {/* Detalles colapsables de la sesión para el Calendar */}
             <details className="mt-8 pt-6 border-t border-gray-100">

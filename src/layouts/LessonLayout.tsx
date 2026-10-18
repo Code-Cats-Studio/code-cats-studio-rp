@@ -26,6 +26,9 @@ interface Props {
   description?: string;
   prev?: LessonRef;
   next?: LessonRef;
+  videoId?: string;      // video de YouTube de la lección (solo cursos creados desde la web)
+  dbLessonId?: string;   // id de la lección en la base, para reportar avance real
+  onComplete?: () => void;
   children: ReactNode;
 }
 
@@ -63,6 +66,9 @@ export default function LessonLayout({
   description,
   prev,
   next,
+  videoId,
+  dbLessonId,
+  onComplete,
   children,
 }: Props) {
   return (
@@ -163,13 +169,16 @@ export default function LessonLayout({
             )}
           </div>
 
-          {/* Reproductor de YouTube con dominio extendido y reporte de watch time a Supabase */}
-          <YouTubePlayer
-            lessonId={`${currentSection}/${currentLesson}`}
-            courseSlug={courseSlug}
-            sectionSlug={currentSection}
-            lessonSlug={currentLesson}
-          />
+          {/* Reproductor: solo si la lección tiene video (antes se mostraba un video de demostración en todas) */}
+          {videoId && (
+            <YouTubePlayer
+              videoId={videoId}
+              lessonId={dbLessonId ?? `${currentSection}/${currentLesson}`}
+              courseSlug={courseSlug}
+              sectionSlug={currentSection}
+              lessonSlug={currentLesson}
+            />
+          )}
 
           <div className="prose">{children}</div>
 
@@ -184,6 +193,7 @@ export default function LessonLayout({
               courseSlug={courseSlug}
               sectionSlug={currentSection}
               lessonSlug={currentLesson}
+              onChange={(done) => done && onComplete?.()}
             />
           </div>
 

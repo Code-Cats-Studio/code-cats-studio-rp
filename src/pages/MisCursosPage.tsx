@@ -11,6 +11,7 @@ import {
   type MyEnrollment,
   type MyProgress,
 } from '../services/account';
+import CheckinForm from '../components/course/CheckinForm';
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
 import { fetchMyUpcomingClasses, type UpcomingClass } from '../services/schedules';
 import { setPageMeta } from '../utils/seo';
@@ -124,6 +125,9 @@ export default function MisCursosPage() {
               </li>
             ))}
           </ul>
+          <div className="mt-6 max-w-md">
+            <CheckinForm />
+          </div>
         </section>
       )}
 

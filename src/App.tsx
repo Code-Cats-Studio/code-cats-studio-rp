@@ -20,6 +20,7 @@ const TareasPage = lazy(() => import('./pages/TareasPage'));
 const TerminosPage = lazy(() => import('./pages/TerminosPage'));
 const PrivacidadPage = lazy(() => import('./pages/PrivacidadPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const CourseEditorPage = lazy(() => import('./pages/CourseEditorPage'));
 const DocentePage = lazy(() => import('./pages/DocentePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const CodeCatsDaysPage = lazy(() => import('./pages/CodeCatsDaysPage'));
@@ -55,6 +56,8 @@ export default function App() {
 
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/cursos/nuevo" element={<CourseEditorPage />} />
+              <Route path="/admin/cursos/:courseId" element={<CourseEditorPage />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />

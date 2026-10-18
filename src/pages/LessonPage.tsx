@@ -8,8 +8,9 @@ import {
   getLessonModule,
 } from '../services/courses';
 import { setPageMeta } from '../utils/seo';
+import DbLessonPage from './DbLessonPage';
 
-export default function LessonPage() {
+function LocalLessonPage() {
   const { courseSlug, sectionSlug, lessonSlug } = useParams();
   const course = courseSlug ? getCourseBySlug(courseSlug) : undefined;
   const lessonModule =
@@ -73,4 +74,12 @@ export default function LessonPage() {
       <Content />
     </LessonLayout>
   );
+}
+
+// Los cursos hechos con archivos MDX se leen del código; los creados desde /admin, de la base de datos.
+export default function LessonPage() {
+  const { courseSlug, sectionSlug, lessonSlug } = useParams();
+  const isLocal =
+    courseSlug && sectionSlug && lessonSlug && getLessonModule(courseSlug, sectionSlug, lessonSlug);
+  return isLocal ? <LocalLessonPage /> : <DbLessonPage />;
 }

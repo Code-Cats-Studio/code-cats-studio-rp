@@ -1,56 +1,48 @@
-# Cómo crear un curso nuevo (ejemplo: JavaScript)
+# Cómo crear un curso nuevo (desde la web, sin SQL)
 
-Un curso vive en **dos lugares** que se enlazan por el `slug`:
-- **Frontend (este repo):** el contenido que se lee (lecciones MDX) y la tarjeta del curso.
-- **Base de datos (Supabase):** el curso y sus *ediciones*, que permiten inscripciones, grupos, tareas, notas y certificados.
+Todo se hace en **`/admin`** con una cuenta de administrador. Los cursos viven en la base de datos: el catálogo, la página
+del curso, las lecciones, las inscripciones, los grupos, las clases y los certificados salen de ahí.
 
-## 1. Frontend: archivos
-1. **Imagen de la mascota:** `public/images/mascot/<nombre>.png` (en kebab-case, sin espacios).
-2. **Ficha del curso:** `src/content/courses/<slug>.json`
-   ```json
-   {
-     "slug": "javascript", "title": "JavaScript", "subtitle": "…", "description": "…",
-     "duration": "4 semanas · 12 clases · 18 horas", "level": "No se requiere experiencia previa",
-     "mascotImage": "gato-js-1", "accentColor": "#F7DF1E",
-     "sections": 4, "lessons": 12, "comingSoon": true, "startDate": "Por definir"
-   }
-   ```
-   `mascotImage` es el nombre del PNG sin la extensión. `sections` y `lessons` se cuentan a mano.
-3. **Secciones:** una carpeta por sección, `src/content/lessons/<slug>/NN-nombre-seccion/section.json`
-   ```json
-   { "title": "Fundamentos de JavaScript", "order": 1, "duration": "4h 30min", "color": "#facc15" }
-   ```
-4. **Lecciones:** `src/content/lessons/<slug>/NN-nombre-seccion/NN-nombre-leccion.mdx`
-   ```mdx
-   ---
-   title: "Variables y tipos"
-   description: "Una línea que resume la lección."
-   order: 1
-   section: "fundamentos-javascript"   # nombre de la carpeta de la sección SIN el número
-   type: "theory"                      # theory | practice | challenge | setup | tool
-   duration: "1h 30min"
-   topics:
-     - "let y const"
-   ---
-   Aquí va el contenido en Markdown…
-   ```
-   El orden sale de `order`. Los slugs de URL salen de los nombres de carpeta y archivo.
-5. Comprueba con `npm run build` y abre `/<slug>`.
+## 1. Crear el curso
+`/admin` → sección **Cursos** → **Crear curso**. Los campos siguen el formato de los cursos del proyecto:
 
-## 2. Base de datos: curso y edición
-- Ejecuta un seed como `supabase/seeds/curso_javascript.sql` (copia y cambia el slug y los textos). Crea el curso publicado y una edición en **borrador**.
-- El `slug` debe ser **idéntico** al del JSON.
+| Campo | Para qué sirve |
+|---|---|
+| Título y **enlace** | El enlace es la dirección: `javascript-basico` → `/javascript-basico`. Solo minúsculas, números y guiones. No puede repetirse ni llamarse como una página de la plataforma (`admin`, `login`, `cursos`…). |
+| Subtítulo y descripción | Se ven en la tarjeta y en la página del curso. |
+| Nivel, tema, duración | Ej. duración: `4 semanas · 12 clases · 18 horas`. |
+| Mascota y color | Imagen de la tarjeta (`public/images/mascot/`) y color de acento. |
+| Qué aprenderás | Una línea por objetivo. Si lo dejas vacío se muestran los nombres de los módulos. |
 
-## 3. Abrir inscripciones (desde la página, sin SQL)
-1. `/admin` → **Ediciones de cursos** → cambia el estado a *Inscripciones abiertas* (esto avisa por correo a todos los usuarios) y ajusta el cupo.
-2. `/admin` → **Grupos y horarios**: crea un grupo por docente con sus días, hora y enlace de clase.
-3. Los estudiantes se inscriben en `/<slug>` eligiendo su horario.
-4. El docente programa las clases en `/docente` → **Clases y horario**.
-5. Al terminar: **Cerrar notas** y **Emitir certificados** en `/admin`.
+## 2. Módulos y lecciones
+- **Agregar módulo** (sección del curso: título, duración y color) y **Agregar lección** dentro de cada módulo.
+- Cada lección tiene título, tipo (teoría, práctica, desafío…), duración, descripción corta, **temas** (uno por línea),
+  **contenido en Markdown** y, si quieres, un **video de YouTube** (pega el enlace del video «No listado»).
+- Con video, el avance se mide por lo que el estudiante ve. Sin video, el estudiante pulsa «Marcar como completada».
+- «Vista previa gratuita» deja que cualquiera lea esa lección sin inscribirse.
+- Con **↑ ↓** reordenas módulos y lecciones. **Importar archivo .mdx** carga una lección escrita con el formato de los
+  archivos del proyecto (frontmatter con `title`, `description`, `type`, `duration`, `topics` y el texto).
+- Markdown que entiende: `#` títulos, listas con `-` o `1.`, `**negrita**`, `*cursiva*`, `` `código` ``, bloques con ```` ``` ````,
+  citas con `>`, enlaces `[texto](https://…)` e imágenes `![alt](https://…)`.
 
-## Lista de revisión
-- [ ] `slug` igual en el JSON, la carpeta de lecciones y la base de datos
-- [ ] `section` del frontmatter = carpeta de la sección sin número
-- [ ] La imagen está en `public/images/mascot/` y el nombre coincide con `mascotImage`
-- [ ] `npm run build` pasa
-- [ ] Edición creada en la base y abierta desde `/admin`
+## 3. Guardar y publicar
+- **Guardar curso** crea o actualiza todo de una vez. Mientras no marques **Publicado**, solo lo ves tú.
+- Para publicar necesita al menos un módulo con una lección.
+- Puedes editar el curso cuando quieras. Si ya hay estudiantes con progreso, no se pueden quitar las lecciones que ya vieron.
+
+## 4. Edición (cuándo se dicta y cuántos cupos hay)
+En la misma página, sección **Ediciones** → **Nueva edición**: nombre, cupo, fechas de inscripción y del curso, nota mínima
+para aprobar y, si quieres, asistencia o avance mínimos.
+- Estado **Borrador**: nadie la ve. **Inscripciones abiertas**: aparece en el catálogo con el botón de inscribirse y se avisa
+  por correo a todos los usuarios (el curso debe estar publicado).
+
+## 5. Después de abrir
+1. `/admin` → **Grupos y horarios**: un grupo por docente con sus días, hora y enlace de clase (Meet, Zoom o Teams).
+2. Los estudiantes se inscriben en `/<enlace>` eligiendo horario.
+3. El docente programa las clases en `/docente` → **Clases y horario**. Cada clase avisa por correo al grupo.
+4. En clase: el docente genera un código de asistencia (o marca la lista a mano).
+5. Al terminar: `/admin` → **Cerrar notas** y **Emitir certificados**.
+
+## Nota para quienes programan
+Los cursos que viven como archivos (`src/content/courses/*.json` y `src/content/lessons/…`) siguen funcionando, pero ya no
+hace falta crear cursos así. Un curso de la base no debe usar el mismo enlace que uno de esos archivos.

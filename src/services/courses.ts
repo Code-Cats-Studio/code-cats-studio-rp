@@ -39,6 +39,8 @@ export interface Course {
   instructors?: Instructor[];
   topics?: Array<{ name: string }>;
   course_offerings?: CourseOffering[];
+  learningOutcomes?: string[];
+  source?: 'db' | 'local';
 }
 
 export interface LessonMeta {
@@ -49,6 +51,8 @@ export interface LessonMeta {
   type: string;
   order: number;
   topics?: string[];
+  id?: string;
+  isPreview?: boolean;
 }
 
 export interface SectionMeta {
@@ -79,6 +83,145 @@ export interface OfferingAvailability {
 export interface EnrollmentResponse {
   status?: 'active' | 'waitlisted' | 'pending_payment';
   error?: string;
+}
+
+
+// ─── Cursos creados desde la web (base de datos) ────────────────────────────
+
+const LEVEL_LABEL: Record<string, string> = {
+  beginner: 'Principiante',
+  intermediate: 'Intermedio',
+  advanced: 'Avanzado',
+};
+
+export const slugify = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50);
+
+// Los cursos de la base no tienen carpetas: sus URLs salen de la posición y el título (1-introduccion)
+export const dbSlug = (position: number, title: string) => `${position}-${slugify(title) || 'item'}`;
+
+function mapDbCourse(item: any, counts: { sections: number; lessons: number } | undefined): Course {
+  const localFallback = getAllCourses().find((c) => c.slug === item.slug);
+  const offerings: CourseOffering[] = item.course_offerings || [];
+  const primaryOffering = offerings.find((o) => o.status === 'open') || offerings[0];
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    subtitle: item.subtitle || item.summary || localFallback?.subtitle || 'Curso oficial en Code Cats Studio',
+    description: item.description || localFallback?.description || '',
+    duration: item.duration_label || localFallback?.duration || 'Por definir',
+    level: LEVEL_LABEL[item.level] || localFallback?.level || 'Principiante',
+    mascotImage: item.mascot_image || localFallback?.mascotImage || 'cat-sitting',
+    accentColor: item.accent_color || localFallback?.accentColor || '#4142F5',
+    sections: counts?.sections ?? localFallback?.sections ?? 0,
+    lessons: counts?.lessons ?? localFallback?.lessons ?? 0,
+    comingSoon: !offerings.some((o) => o.status === 'open'),
+    startDate: primaryOffering?.starts_on || localFallback?.startDate,
+    topics: item.topics,
+    course_offerings: offerings,
+    instructors: localFallback?.instructors,
+    learningOutcomes: item.learning_outcomes?.length ? item.learning_outcomes : undefined,
+    source: localFallback ? 'local' : 'db',
+  };
+}
+
+async function fetchCounts(): Promise<Map<string, { sections: number; lessons: number }>> {
+  const { data } = await supabase.from('course_counts').select('course_id,sections,lessons');
+  return new Map((data ?? []).map((r: any) => [r.course_id, { sections: r.sections, lessons: r.lessons }]));
+}
+
+/**
+ * Índice (módulos y lecciones) de un curso creado desde la web. Es público: viene de la vista course_syllabus.
+ * El contenido de cada lección solo lo lee quien esté inscrito (lo decide la base con RLS).
+ */
+export async function fetchDbSections(courseId: string): Promise<SectionMeta[]> {
+  const { data, error } = await supabase
+    .from('course_syllabus')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('module_position')
+    .order('lesson_position');
+  if (error || !data) return [];
+
+  const byModule = new Map<string, SectionMeta>();
+  for (const row of data as any[]) {
+    let section = byModule.get(row.module_id);
+    if (!section) {
+      section = {
+        slug: dbSlug(row.module_position, row.module_title),
+        title: row.module_title,
+        order: row.module_position,
+        color: row.module_color || '#4142F5',
+        duration: row.module_duration || '',
+        lessons: [],
+      };
+      byModule.set(row.module_id, section);
+    }
+    if (row.lesson_id) {
+      section.lessons.push({
+        id: row.lesson_id,
+        slug: dbSlug(row.lesson_position, row.lesson_title),
+        title: row.lesson_title,
+        description: row.lesson_description || '',
+        duration: row.lesson_duration || '',
+        type: row.lesson_type || 'theory',
+        order: row.lesson_position,
+        topics: row.lesson_topics || [],
+        isPreview: row.is_preview,
+      });
+    }
+  }
+  return [...byModule.values()].sort((a, b) => a.order - b.order);
+}
+
+export interface DbLesson {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  duration: string;
+  topics: string[];
+  contentMd: string;
+  youtubeId: string | null;
+}
+
+// Lección completa de un curso de la base; null si no existe o la persona no tiene acceso
+export async function fetchDbLesson(lessonId: string): Promise<DbLesson | null> {
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('id,title,description,lesson_type,duration_label,topics,content_md, videos(external_id)')
+    .eq('id', lessonId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const l = data as any;
+  return {
+    id: l.id,
+    title: l.title,
+    description: l.description || '',
+    type: l.lesson_type || 'theory',
+    duration: l.duration_label || '',
+    topics: l.topics || [],
+    contentMd: l.content_md || '',
+    youtubeId: l.videos?.external_id ?? null,
+  };
+}
+
+// Lecciones que la persona ya completó en un curso (para pintar el avance)
+export async function fetchMyCompletedLessonIds(): Promise<string[]> {
+  const { data } = await supabase.from('lesson_progress').select('lesson_id').eq('completed', true);
+  return (data ?? []).map((r: any) => r.lesson_id);
+}
+
+export async function completeLesson(lessonId: string): Promise<string | null> {
+  const { error } = await supabase.rpc('complete_lesson', { p_lesson: lessonId });
+  return error?.message ?? null;
 }
 
 // ─── Contenido Local MDX (para el visor interactivo de clases) ─────────────
@@ -145,31 +288,11 @@ export async function fetchPublishedCourses(): Promise<Course[]> {
       return getAllCourses();
     }
 
-    // Mapear registros de Supabase a la interfaz Course
-    return data.map((item: any) => {
-      const localFallback = getAllCourses().find((c) => c.slug === item.slug);
-      const offerings: CourseOffering[] = item.course_offerings || [];
-      const primaryOffering = offerings.find((o) => o.status === 'open') || offerings[0];
-
-      return {
-        id: item.id,
-        slug: item.slug,
-        title: item.title,
-        subtitle: item.subtitle || localFallback?.subtitle || 'Curso oficial en Code Cats Studio',
-        description: item.description || localFallback?.description || '',
-        duration: item.duration || localFallback?.duration || '6 semanas',
-        level: item.level || localFallback?.level || 'Principiante',
-        mascotImage: item.mascot_image || localFallback?.mascotImage || 'cat-sitting',
-        accentColor: item.accent_color || localFallback?.accentColor || '#4142F5',
-        sections: item.sections_count || localFallback?.sections || 6,
-        lessons: item.lessons_count || localFallback?.lessons || 18,
-        comingSoon: !offerings.some((o) => o.status === 'open'),
-        startDate: primaryOffering?.starts_on || localFallback?.startDate,
-        topics: item.topics,
-        course_offerings: offerings,
-        instructors: localFallback?.instructors,
-      };
-    });
+    const counts = await fetchCounts();
+    const fromDb = data.map((item: any) => mapDbCourse(item, counts.get(item.id)));
+    // Los cursos que solo existen como archivos locales también se muestran (aún sin edición en la base)
+    const local = getAllCourses().filter((c) => !fromDb.some((d) => d.slug === c.slug));
+    return [...fromDb, ...local.map((c) => ({ ...c, source: 'local' as const }))];
   } catch (err) {
     console.error('[CoursesService] Excepción al consultar courses en Supabase:', err);
     return getAllCourses();
@@ -193,28 +316,8 @@ export async function fetchCourseBySlug(slug: string): Promise<Course | undefine
       return getCourseBySlug(slug);
     }
 
-    const localFallback = getCourseBySlug(slug);
-    const offerings: CourseOffering[] = data.course_offerings || [];
-    const primaryOffering = offerings.find((o) => o.status === 'open') || offerings[0];
-
-    return {
-      id: data.id,
-      slug: data.slug,
-      title: data.title,
-      subtitle: data.subtitle || localFallback?.subtitle || 'Curso oficial',
-      description: data.description || localFallback?.description || '',
-      duration: data.duration || localFallback?.duration || '6 semanas',
-      level: data.level || localFallback?.level || 'Principiante',
-      mascotImage: data.mascot_image || localFallback?.mascotImage || 'cat-sitting',
-      accentColor: data.accent_color || localFallback?.accentColor || '#4142F5',
-      sections: data.sections_count || localFallback?.sections || 6,
-      lessons: data.lessons_count || localFallback?.lessons || 18,
-      comingSoon: !offerings.some((o) => o.status === 'open'),
-      startDate: primaryOffering?.starts_on || localFallback?.startDate,
-      topics: data.topics,
-      course_offerings: offerings,
-      instructors: localFallback?.instructors,
-    };
+    const counts = await fetchCounts();
+    return mapDbCourse(data, counts.get(data.id));
   } catch {
     return getCourseBySlug(slug);
   }
