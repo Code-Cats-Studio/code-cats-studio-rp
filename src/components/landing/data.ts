@@ -33,9 +33,9 @@ export const SOCIALS = [
 
 // Símbolos de la marca ({ } / * > &) que flotan de decoración en el hero.
 export const SYMBOLS: { char: string; color: 'lime' | 'blue'; top: string; left: string; size: string; delay: string }[] = [
-  { char: '{', color: 'blue', top: '12%', left: '47%', size: '5.5rem', delay: '0s' },
-  { char: '/', color: 'lime', top: '70%', left: '44%', size: '4.5rem', delay: '1.2s' },
-  { char: '*', color: 'lime', top: '18%', left: '90%', size: '5rem', delay: '0.6s' },
-  { char: '>', color: 'lime', top: '78%', left: '94%', size: '4rem', delay: '1.8s' },
-  { char: '&', color: 'blue', top: '60%', left: '6%', size: '4.5rem', delay: '0.9s' },
+  { char: '{', color: 'blue', top: '8%', left: '56%', size: '5.5rem', delay: '0s' },
+  { char: '/', color: 'lime', top: '82%', left: '62%', size: '4.5rem', delay: '1.2s' },
+  { char: '*', color: 'lime', top: '14%', left: '91%', size: '5rem', delay: '0.6s' },
+  { char: '>', color: 'lime', top: '80%', left: '93%', size: '4rem', delay: '1.8s' },
+  { char: '&', color: 'blue', top: '46%', left: '86%', size: '4.5rem', delay: '0.9s' },
 ];

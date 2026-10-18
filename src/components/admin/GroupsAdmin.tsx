@@ -16,11 +16,12 @@ const field = 'w-full px-2 py-1.5 rounded border border-gray-300';
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
 
 // Grupos con horario: cada docente tiene su grupo, con sus días, hora y Meet. Los estudiantes eligen entre ellos.
-export default function GroupsAdmin() {
+export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?: string } = {}) {
   const [offerings, setOfferings] = useState<AdminOffering[]>([]);
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [groups, setGroups] = useState<TeacherGroup[]>([]);
-  const [offeringId, setOfferingId] = useState('');
+  const [pickedOffering, setOfferingId] = useState('');
+  const offeringId = fixedOffering ?? pickedOffering;
   const [teacherId, setTeacherId] = useState('');
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState('40');
@@ -33,9 +34,9 @@ export default function GroupsAdmin() {
     setOfferings(offs);
     setTeachers(teach);
     setGroups(grps);
-    setOfferingId((c) => c || offs[0]?.id || '');
+    if (!fixedOffering) setOfferingId((c) => c || offs[0]?.id || '');
     setTeacherId((c) => c || teach[0]?.user_id || '');
-  }, []);
+  }, [fixedOffering]);
 
   useEffect(() => {
     void load();
@@ -75,7 +76,7 @@ export default function GroupsAdmin() {
   const shown = groups.filter((g) => g.offering_id === offeringId);
 
   return (
-    <section className="mt-12" aria-labelledby="adm-groups">
+    <section className={fixedOffering ? 'mt-2' : 'mt-12'} aria-labelledby="adm-groups">
       <h2 id="adm-groups" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.25rem' }}>
         Grupos y horarios
       </h2>
@@ -84,15 +85,17 @@ export default function GroupsAdmin() {
       </p>
       {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
 
-      {offerings.length === 0 ? (
+      {!fixedOffering && offerings.length === 0 ? (
         <p className="mt-3 text-sm" style={{ color: 'var(--text-muted)' }}>Primero necesitas una edición de curso.</p>
       ) : (
         <>
-          <label className="mt-4 grid gap-1 text-sm max-w-md">Edición
-            <select className={field} value={offeringId} onChange={(e) => setOfferingId(e.target.value)}>
-              {offerings.map((o) => <option key={o.id} value={o.id}>{o.course_title} · {o.label}</option>)}
-            </select>
-          </label>
+          {!fixedOffering && (
+            <label className="mt-4 grid gap-1 text-sm max-w-md">Edición
+              <select className={field} value={offeringId} onChange={(e) => setOfferingId(e.target.value)}>
+                {offerings.map((o) => <option key={o.id} value={o.id}>{o.course_title} · {o.label}</option>)}
+              </select>
+            </label>
+          )}
 
           <form onSubmit={(e) => void create(e)} className="mt-4 p-4 rounded-xl grid sm:grid-cols-4 gap-3 items-end text-sm" style={card}>
             <label className="grid gap-1">Nombre

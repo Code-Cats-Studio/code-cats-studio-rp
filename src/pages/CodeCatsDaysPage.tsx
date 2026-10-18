@@ -172,7 +172,7 @@ export default function CodeCatsDaysPage() {
               <p className="ccd-hero__date"><time dateTime="2026-11-07T10:00:00-04:00">Sábado 7 de noviembre, 10:00</time><span>Auditorio de Informática, UMSA</span></p>
               <h1 className="ccd-hero__logo"><img src={`${ASSETS}/logo_hero.png`} width={561} height={446} fetchPriority="high" alt="Code Cats Days 2026, Expedition 01" /></h1>
               <p className="ccd-text ccd-hero__desc">Explora tecnología, crea proyectos reales y conecta con la comunidad. Tu expedición empieza aquí.</p>
-              <Link className="ccd-btn ccd-hero__cta" to="/evento">Inscribirme</Link>
+              <Link className="ccd-btn ccd-hero__cta" to="/code-cats-days/inscripcion">Inscribirme</Link>
             </div>
             <div className="ccd-hero__visual">
               <div className="ccd-hero__cat-entry"><img className="ccd-hero__cat" src={`${ASSETS}/portada_hero_gato.png`} width={645} height={451} fetchPriority="high" alt="" /></div>

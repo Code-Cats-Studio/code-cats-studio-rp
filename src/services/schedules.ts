@@ -117,6 +117,24 @@ export interface ClassSession {
 
 export const boLocalToIso = (local: string) => new Date(`${local}:00-04:00`).toISOString();
 
+export interface EditionSession extends ClassSession {
+  group_name: string | null;
+}
+
+// Todas las clases de una edición (la ve el admin o el docente principal)
+export async function fetchEditionSessions(offeringId: string): Promise<EditionSession[]> {
+  const { data, error } = await supabase
+    .from('live_sessions')
+    .select('id,offering_id,group_id,title,starts_at,ends_at,meet_url, offering_groups(name)')
+    .eq('offering_id', offeringId)
+    .order('starts_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as any[]).map((s) => ({
+    id: s.id, offering_id: s.offering_id, group_id: s.group_id, title: s.title, starts_at: s.starts_at,
+    ends_at: s.ends_at, meet_url: s.meet_url, group_name: s.offering_groups?.name ?? null,
+  }));
+}
+
 export async function fetchGroupSessions(groupId: string): Promise<ClassSession[]> {
   const { data, error } = await supabase
     .from('live_sessions')
@@ -129,7 +147,7 @@ export async function fetchGroupSessions(groupId: string): Promise<ClassSession[
 
 export async function createClassSession(input: {
   offeringId: string;
-  groupId: string;
+  groupId: string | null; // null = toda la edición
   title: string;
   startsLocal: string;
   endsLocal: string;

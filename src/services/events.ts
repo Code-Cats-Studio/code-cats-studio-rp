@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabase';
 
 // Eventos: inscripción con perfil por evento (register_for_event_with_profile)
 
-export const CODE_CATS_DAYS_SLUG = 'code-cats-days-2026';
+export const CODE_CATS_DAYS_SLUG = 'code-cats-days';
+const LEGACY_SLUGS: Record<string, string> = { 'code-cats-days': 'code-cats-days-2026' }; // por si se creó con el enlace anterior
 
 export interface EventInfo {
   id: string;
@@ -66,12 +67,13 @@ export const INTEREST_OPTIONS = [
 ];
 
 export async function fetchEventBySlug(slug: string): Promise<EventInfo | null> {
+  const slugs = [slug, LEGACY_SLUGS[slug]].filter(Boolean) as string[];
   const { data } = await supabase
     .from('events')
     .select('id,title,slug,description,starts_at,location,capacity')
-    .eq('slug', slug)
-    .maybeSingle();
-  return (data as EventInfo | null) ?? null;
+    .in('slug', slugs);
+  const rows = (data as EventInfo[] | null) ?? [];
+  return rows.find((r) => r.slug === slug) ?? rows[0] ?? null;
 }
 
 export async function fetchMyEventRegistration(eventId: string, userId: string): Promise<MyEventRegistration | null> {

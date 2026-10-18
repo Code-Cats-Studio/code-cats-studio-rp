@@ -1,15 +1,15 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import TeacherRoute from './components/auth/TeacherRoute';
 import AdminRoute from './components/auth/AdminRoute';
+import PostLoginRedirect from './components/auth/PostLoginRedirect';
 
 // The event loads independently of course content, and GSAP stays off course routes.
 const MainLayout = lazy(() => import('./layouts/MainLayout'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const CoursePage = lazy(() => import('./pages/CoursePage'));
 const LessonPage = lazy(() => import('./pages/LessonPage'));
-const EventoPage = lazy(() => import('./pages/EventoPage'));
 const RegistroPage = lazy(() => import('./pages/RegistroPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RestablecerPage = lazy(() => import('./pages/RestablecerPage'));
@@ -24,19 +24,22 @@ const CourseEditorPage = lazy(() => import('./pages/CourseEditorPage'));
 const DocentePage = lazy(() => import('./pages/DocentePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const CodeCatsDaysPage = lazy(() => import('./pages/CodeCatsDaysPage'));
+const CodeCatsDaysInscripcionPage = lazy(() => import('./pages/CodeCatsDaysInscripcionPage'));
 
 export default function App() {
   return (
     <AuthProvider>
+      <PostLoginRedirect />
       <Suspense fallback={<main role="status" style={{ minHeight: '100dvh', padding: '32px', fontFamily: 'system-ui' }}>Cargando…</main>}>
         <Routes>
           <Route path="/:courseSlug/:sectionSlug/:lessonSlug" element={<LessonPage />} />
 
           <Route path="/code-cats-days" element={<CodeCatsDaysPage />} />
+          <Route path="/code-cats-days/inscripcion" element={<CodeCatsDaysInscripcionPage />} />
 
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/evento" element={<EventoPage />} />
+            <Route path="/evento" element={<Navigate to="/code-cats-days/inscripcion" replace />} />
             <Route path="/registro" element={<RegistroPage />} />
             <Route path="/perfil" element={<RegistroPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -52,6 +55,7 @@ export default function App() {
             {/* Rutas protegidas para Docentes / Administradores */}
             <Route element={<TeacherRoute />}>
               <Route path="/docente" element={<DocentePage />} />
+              <Route path="/docente/cursos/:courseId" element={<CourseEditorPage mode="teacher" />} />
             </Route>
 
             <Route element={<AdminRoute />}>

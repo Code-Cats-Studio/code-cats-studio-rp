@@ -279,7 +279,13 @@ export async function createManualGroup(
     position: (count ?? 0) + 1,
   });
   if (error?.code === '23505') return 'Ya existe un grupo con ese nombre en esta edición.';
-  return error?.message ?? null;
+  if (error) return error.message;
+  // quien dicta un grupo forma parte del equipo docente de la edición (si ya está, no se cambia su rol)
+  await supabase.from('offering_staff').upsert(
+    { offering_id: offeringId, user_id: teacherId, staff_role: 'assistant' },
+    { onConflict: 'offering_id,user_id', ignoreDuplicates: true }
+  );
+  return null;
 }
 
 export async function deleteGroup(groupId: string): Promise<string | null> {
@@ -320,5 +326,40 @@ export async function grantRole(email: string, role: 'teacher' | 'admin'): Promi
 
 export async function revokeRole(userId: string, role: 'teacher' | 'admin'): Promise<string | null> {
   const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role).is('community_id', null);
+  return error?.message ?? null;
+}
+
+// ─── Lista de asistencia del evento ─────────────────────────────────────────
+
+export interface EventRegistrant {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  status: 'registered' | 'waitlisted' | 'cancelled';
+  attended: boolean;
+  participant_type: string | null;
+}
+
+export async function fetchEventRegistrants(eventId: string): Promise<EventRegistrant[]> {
+  const { data: regs } = await supabase
+    .from('event_registrations')
+    .select('user_id,status,attended,profiles(full_name,email)')
+    .eq('event_id', eventId);
+  const { data: profs } = await supabase.from('event_profiles').select('user_id,participant_type').eq('event_id', eventId);
+  const types = new Map(((profs as any[]) ?? []).map((p) => [p.user_id, p.participant_type]));
+  return ((regs as any[]) ?? [])
+    .map((r) => ({
+      user_id: r.user_id,
+      full_name: r.profiles?.full_name ?? null,
+      email: r.profiles?.email ?? null,
+      status: r.status,
+      attended: r.attended,
+      participant_type: types.get(r.user_id) ?? null,
+    }))
+    .sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? ''));
+}
+
+export async function setEventAttended(eventId: string, userId: string, attended: boolean): Promise<string | null> {
+  const { error } = await supabase.from('event_registrations').update({ attended }).eq('event_id', eventId).eq('user_id', userId);
   return error?.message ?? null;
 }

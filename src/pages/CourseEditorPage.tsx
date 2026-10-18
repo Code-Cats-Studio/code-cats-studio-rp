@@ -21,6 +21,7 @@ import {
   type ModuleForm,
 } from '../services/courseAdmin';
 import { getAllCourses, slugify } from '../services/courses';
+import EditionHub from '../components/edition/EditionHub';
 import { setPageMeta } from '../utils/seo';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
@@ -57,11 +58,12 @@ function move<T>(list: T[], from: number, to: number): T[] {
 
 // ─── Ediciones ──────────────────────────────────────────────────────────────
 
-function Editions({ courseId, published }: { courseId: string; published: boolean }) {
+function Editions({ courseId, courseTitle, published }: { courseId: string; courseTitle: string; published: boolean }) {
   const [editions, setEditions] = useState<EditionForm[]>([]);
   const [draft, setDraft] = useState<EditionForm | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hub, setHub] = useState<string | null>(null);
 
   const load = useCallback(async () => setEditions(await fetchEditions(courseId)), [courseId]);
   useEffect(() => {
@@ -131,9 +133,17 @@ function Editions({ courseId, published }: { courseId: string; published: boolea
       <ul className="mt-4 grid gap-2">
         {editions.length === 0 && <li className="text-sm" style={{ color: 'var(--text-muted)' }}>Este curso aún no tiene ediciones: sin una edición abierta nadie puede inscribirse.</li>}
         {editions.map((e) => (
-          <li key={e.id} className="p-3 rounded-xl flex flex-wrap items-center justify-between gap-2" style={card}>
-            <span className="text-sm"><strong>{e.label}</strong> <span style={{ color: 'var(--text-muted)' }}>· {STATUS_LABEL[e.status]} · cupo {e.capacity}{e.starts_on ? ` · inicia ${e.starts_on}` : ''}</span></span>
-            <button type="button" className={btn} style={outline} onClick={() => setDraft(e)}>Editar</button>
+          <li key={e.id} className="p-3 rounded-xl" style={card}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm"><strong>{e.label}</strong> <span style={{ color: 'var(--text-muted)' }}>· {STATUS_LABEL[e.status]} · cupo {e.capacity}{e.starts_on ? ` · inicia ${e.starts_on}` : ''}</span></span>
+              <span className="flex gap-2">
+                <button type="button" className={btn} style={primary} onClick={() => setHub(hub === e.id ? null : (e.id ?? null))}>
+                  {hub === e.id ? 'Cerrar gestión' : 'Gestionar'}
+                </button>
+                <button type="button" className={btn} style={outline} onClick={() => setDraft(e)}>Editar datos</button>
+              </span>
+            </div>
+            {hub === e.id && e.id && <EditionHub offeringId={e.id} courseTitle={courseTitle} canManageTeam />}
           </li>
         ))}
       </ul>
@@ -210,7 +220,8 @@ function LessonEditor({ lesson, index, total, onChange, onMove, onRemove }: {
 
 // ─── Página ─────────────────────────────────────────────────────────────────
 
-export default function CourseEditorPage() {
+export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 'teacher' } = {}) {
+  const isTeacher = mode === 'teacher';
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState<CourseForm | null>(courseId ? null : emptyCourse());
@@ -238,7 +249,7 @@ export default function CourseEditorPage() {
 
   const handleSave = async () => {
     setMessage(null);
-    if (!form.id && getAllCourses().some((c) => c.slug === form.slug)) {
+    if (!isTeacher && !form.id && getAllCourses().some((c) => c.slug === form.slug)) {
       setMessage({ type: 'error', text: 'Ese enlace ya lo usa un curso que vive en el código. Elige otro.' });
       return;
     }
@@ -262,10 +273,17 @@ export default function CourseEditorPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-10 pb-28" style={{ minHeight: 'calc(100vh - 8rem)' }}>
-      <Link to="/admin" className="text-sm no-underline" style={{ color: 'var(--azul-gatuno)' }}>← Panel de administración</Link>
+      <Link to={isTeacher ? '/docente' : '/admin'} className="text-sm no-underline" style={{ color: 'var(--azul-gatuno)' }}>← {isTeacher ? 'Panel del docente' : 'Panel de administración'}</Link>
       <h1 className="mt-2" style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', letterSpacing: '0.05em' }}>
         {form.id ? 'Editar curso' : 'Crear curso'}
       </h1>
+
+      {isTeacher && (
+        <p className="mt-3 text-sm p-3 rounded-xl" style={{ background: 'var(--bg-lime-soft)', border: '1px solid var(--border)' }}>
+          Como docente principal puedes editar los textos, los módulos y las lecciones. El enlace, el nivel, la publicación y las
+          ediciones los administra un administrador.
+        </p>
+      )}
 
       {/* Datos del curso */}
       <section className="mt-6 p-5 rounded-2xl grid gap-4" style={card} aria-labelledby="c-data">
@@ -276,15 +294,15 @@ export default function CourseEditorPage() {
               onChange={(e) => { set('title', e.target.value); if (!slugTouched) set('slug', slugify(e.target.value)); }} />
           </Field>
           <Field label="Enlace del curso" hint={`Será la dirección /${form.slug || 'enlace'}. Solo minúsculas, números y guiones.`}>
-            <input className={field} value={form.slug} maxLength={60} onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }} />
+            <input className={field} value={form.slug} maxLength={60} disabled={isTeacher} onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }} />
           </Field>
         </div>
         <Field label="Subtítulo" hint="Una frase que se ve en la tarjeta del curso."><input className={field} maxLength={160} value={form.subtitle} onChange={(e) => set('subtitle', e.target.value)} /></Field>
         <Field label="Descripción"><textarea className={field} rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} /></Field>
         <div className="grid sm:grid-cols-3 gap-4">
-          <Field label="Nivel"><select className={field} value={form.level} onChange={(e) => set('level', e.target.value)}>{LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}</select></Field>
+          <Field label="Nivel"><select className={field} value={form.level} disabled={isTeacher} onChange={(e) => set('level', e.target.value)}>{LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}</select></Field>
           <Field label="Tema">
-            <select className={field} value={form.topic_id} onChange={(e) => set('topic_id', e.target.value)}>
+            <select className={field} value={form.topic_id} disabled={isTeacher} onChange={(e) => set('topic_id', e.target.value)}>
               <option value="">Sin tema</option>
               {topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
@@ -339,17 +357,19 @@ export default function CourseEditorPage() {
         </div>
       </section>
 
-      {form.id ? <Editions courseId={form.id} published={form.is_published} /> : (
+      {form.id && !isTeacher ? <Editions courseId={form.id} courseTitle={form.title} published={form.is_published} /> : (
         <p className="mt-8 text-sm" style={{ color: 'var(--text-muted)' }}>Cuando guardes el curso podrás crear sus ediciones (fechas y cupos) para abrir inscripciones.</p>
       )}
 
       {/* Barra de guardado */}
       <div className="fixed bottom-0 inset-x-0 z-30 px-6 py-3" style={{ background: 'rgba(255,255,255,0.95)', borderTop: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}>
         <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.is_published} onChange={(e) => set('is_published', e.target.checked)} />
-            Publicado (aparece en el catálogo)
-          </label>
+          {!isTeacher && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_published} onChange={(e) => set('is_published', e.target.checked)} />
+              Publicado (aparece en el catálogo)
+            </label>
+          )}
           <button type="button" disabled={busy} className="px-5 py-2 rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50" style={primary} onClick={() => void handleSave()}>
             {busy ? 'Guardando…' : 'Guardar curso'}
           </button>

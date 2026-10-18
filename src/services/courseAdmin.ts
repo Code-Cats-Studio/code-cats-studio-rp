@@ -291,3 +291,131 @@ export async function saveEdition(courseId: string, e: EditionForm): Promise<str
     : await supabase.from('course_offerings').insert({ ...row, course_id: courseId });
   return error?.message ?? null;
 }
+
+export interface EditionGroup {
+  id: string;
+  name: string;
+  schedule_label: string | null;
+}
+
+export async function fetchEditionGroups(offeringId: string): Promise<EditionGroup[]> {
+  const { data } = await supabase.from('offering_groups').select('id,name,schedule_label').eq('offering_id', offeringId).order('position');
+  return (data as EditionGroup[]) ?? [];
+}
+
+// ─── Equipo docente de una edición ──────────────────────────────────────────
+
+export interface StaffRow {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  staff_role: 'lead' | 'assistant';
+}
+
+export async function fetchOfferingStaff(offeringId: string): Promise<StaffRow[]> {
+  const { data } = await supabase
+    .from('offering_staff')
+    .select('user_id,staff_role,profiles(full_name,email)')
+    .eq('offering_id', offeringId);
+  return ((data as any[]) ?? []).map((r) => ({
+    user_id: r.user_id,
+    staff_role: r.staff_role,
+    full_name: r.profiles?.full_name ?? null,
+    email: r.profiles?.email ?? null,
+  }));
+}
+
+export async function setOfferingStaff(offeringId: string, userId: string, role: 'lead' | 'assistant'): Promise<string | null> {
+  const { error } = await supabase
+    .from('offering_staff')
+    .upsert({ offering_id: offeringId, user_id: userId, staff_role: role }, { onConflict: 'offering_id,user_id' });
+  return error?.message ?? null;
+}
+
+export async function removeOfferingStaff(offeringId: string, userId: string): Promise<string | null> {
+  const { error } = await supabase.from('offering_staff').delete().eq('offering_id', offeringId).eq('user_id', userId);
+  return error?.message ?? null;
+}
+
+// ─── Tareas y material de una edición ───────────────────────────────────────
+
+export interface AssignmentRow {
+  id: string;
+  title: string;
+  description: string | null;
+  due_at: string | null;
+  max_score: number;
+  weight: number;
+  group_id: string | null;
+}
+
+export interface MaterialRow {
+  id: string;
+  title: string;
+  kind: 'file' | 'link' | 'drive' | 'github' | 'other';
+  url: string;
+  group_id: string | null;
+}
+
+export async function fetchEditionAssignments(offeringId: string): Promise<AssignmentRow[]> {
+  const { data } = await supabase
+    .from('assignments')
+    .select('id,title,description,due_at,max_score,weight,group_id')
+    .eq('offering_id', offeringId)
+    .order('due_at', { ascending: true, nullsFirst: false });
+  return (data as AssignmentRow[]) ?? [];
+}
+
+export async function createAssignment(offeringId: string, a: {
+  title: string; description: string; dueLocal: string; maxScore: number; weight: number; groupId: string | null;
+}): Promise<string | null> {
+  if (a.title.trim().length < 2) return 'Ponle un título a la tarea.';
+  const { error } = await supabase.from('assignments').insert({
+    offering_id: offeringId,
+    title: a.title.trim(),
+    description: a.description.trim() || null,
+    due_at: a.dueLocal ? localToIso(a.dueLocal) : null,
+    max_score: a.maxScore,
+    weight: a.weight,
+    group_id: a.groupId,
+  });
+  return error?.message ?? null;
+}
+
+export async function deleteAssignment(id: string): Promise<string | null> {
+  const { error } = await supabase.from('assignments').delete().eq('id', id);
+  return error?.message ?? null;
+}
+
+export async function fetchEditionMaterials(offeringId: string): Promise<MaterialRow[]> {
+  const { data } = await supabase.from('materials').select('id,title,kind,url,group_id').eq('offering_id', offeringId).order('created_at');
+  return (data as MaterialRow[]) ?? [];
+}
+
+export async function createMaterial(offeringId: string, m: {
+  title: string; kind: MaterialRow['kind']; url: string; groupId: string | null;
+}): Promise<string | null> {
+  if (m.title.trim().length < 2) return 'Ponle un título al material.';
+  if (!/^https:\/\//i.test(m.url.trim())) return 'El enlace debe empezar con https://';
+  const { error } = await supabase.from('materials').insert({
+    offering_id: offeringId, title: m.title.trim(), kind: m.kind, url: m.url.trim(), group_id: m.groupId,
+  });
+  return error?.message ?? null;
+}
+
+export async function deleteMaterial(id: string): Promise<string | null> {
+  const { error } = await supabase.from('materials').delete().eq('id', id);
+  return error?.message ?? null;
+}
+
+// ─── Estudiantes de una edición ─────────────────────────────────────────────
+
+export async function assignStudentToGroup(enrollmentId: string, groupId: string | null): Promise<string | null> {
+  const { error } = await supabase.rpc('assign_to_group', { p_enrollment: enrollmentId, p_group: groupId });
+  return error?.message ?? null;
+}
+
+export async function removeStudent(enrollmentId: string, reason: string): Promise<string | null> {
+  const { error } = await supabase.rpc('remove_student', { p_enrollment: enrollmentId, p_reason: reason });
+  return error?.message ?? null;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { peekRedirect } from '../components/auth/PostLoginRedirect';
 import { setPageMeta } from '../utils/seo';
 
 type Mode = 'login' | 'signup' | 'reset';
@@ -36,7 +37,7 @@ export default function LoginPage() {
   }, []);
 
   if (!isLoading && user) {
-    return <Navigate to={isProfileComplete ? '/mis-cursos' : '/perfil'} replace />;
+    return <Navigate to={peekRedirect() ?? (isProfileComplete ? '/mis-cursos' : '/perfil')} replace />;
   }
 
   const switchMode = (next: Mode) => {

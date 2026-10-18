@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   exportEventRegistrations,
   fetchAdminEvents,
+  fetchEventRegistrants,
+  setEventAttended,
+  type EventRegistrant,
   saveEvent,
   setEventPublished,
   type AdminEvent,
@@ -15,6 +18,50 @@ const field = 'w-full px-2 py-1.5 rounded border border-gray-300';
 const BO_OFFSET_MS = 4 * 60 * 60 * 1000;
 const toInputValue = (iso: string) => new Date(new Date(iso).getTime() - BO_OFFSET_MS).toISOString().slice(0, 16);
 const fromInputValue = (local: string) => new Date(`${local}:00-04:00`).toISOString();
+
+// Lista de asistencia del día del evento: el equipo marca quién llegó
+function Registrants({ eventId }: { eventId: string }) {
+  const [rows, setRows] = useState<EventRegistrant[]>([]);
+  const [query, setQuery] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchEventRegistrants(eventId).then(setRows);
+  }, [eventId]);
+
+  const toggle = async (r: EventRegistrant) => {
+    setRows((all) => all.map((x) => (x.user_id === r.user_id ? { ...x, attended: !x.attended } : x)));
+    const error = await setEventAttended(eventId, r.user_id, !r.attended);
+    if (error) {
+      setMessage(error);
+      setRows((all) => all.map((x) => (x.user_id === r.user_id ? { ...x, attended: r.attended } : x)));
+    }
+  };
+
+  const active = rows.filter((r) => r.status !== 'cancelled');
+  const shown = active.filter((r) => `${r.full_name ?? ''} ${r.email ?? ''}`.toLowerCase().includes(query.toLowerCase()));
+  return (
+    <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <strong>Llegaron {active.filter((r) => r.attended).length} de {active.length}</strong>
+        <input className="px-2 py-1 rounded border border-gray-300 text-sm" placeholder="Buscar por nombre o correo" value={query} onChange={(e) => setQuery(e.target.value)} />
+        {message && <span role="alert" style={{ color: 'var(--error)' }}>{message}</span>}
+      </div>
+      <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+        {shown.map((r) => (
+          <li key={r.user_id}>
+            <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm cursor-pointer" style={{ border: '1px solid var(--border)' }}>
+              <input type="checkbox" checked={r.attended} onChange={() => void toggle(r)} />
+              <span className="min-w-0 truncate">{r.full_name ?? r.email}</span>
+              {r.status === 'waitlisted' && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(espera)</span>}
+            </label>
+          </li>
+        ))}
+        {shown.length === 0 && <li className="text-sm" style={{ color: 'var(--text-muted)' }}>Sin resultados.</li>}
+      </ul>
+    </div>
+  );
+}
 
 const slugify = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -39,6 +86,7 @@ export default function EventsAdmin() {
   const [form, setForm] = useState<FormState | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openList, setOpenList] = useState<string | null>(null);
 
   const load = useCallback(async () => setEvents(await fetchAdminEvents()), []);
   useEffect(() => {
@@ -142,7 +190,7 @@ export default function EventsAdmin() {
             <button type="button" className={btn} style={{ border: '1px solid var(--border)' }} onClick={() => setForm(null)}>Cancelar</button>
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            La página <code>/evento</code> inscribe al evento con el enlace <code>code-cats-days-2026</code>.
+            Para Code Cats Days usa el enlace <code>code-cats-days</code>: la inscripción de la página del evento busca ese enlace.
           </p>
         </form>
       )}
@@ -162,12 +210,16 @@ export default function EventsAdmin() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={busy} className={btn} style={{ border: '1px solid var(--border)' }} onClick={() => edit(e)}>Editar</button>
+                <button type="button" className={btn} style={{ border: '1px solid var(--border)' }} onClick={() => setOpenList(openList === e.id ? null : e.id)}>
+                  {openList === e.id ? 'Ocultar asistencia' : 'Asistencia del evento'}
+                </button>
                 <button type="button" disabled={busy} className={btn} style={{ border: '1px solid var(--border)' }} onClick={() => void download(e)}>Descargar inscritos</button>
                 <button type="button" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }} onClick={() => void togglePublish(e)}>
                   {e.is_published ? 'Ocultar' : 'Publicar'}
                 </button>
               </div>
             </div>
+            {openList === e.id && <Registrants eventId={e.id} />}
           </li>
         ))}
       </ul>

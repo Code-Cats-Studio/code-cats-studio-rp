@@ -126,9 +126,10 @@ function mapDbCourse(item: any, counts: { sections: number; lessons: number } | 
     startDate: primaryOffering?.starts_on || localFallback?.startDate,
     topics: item.topics,
     course_offerings: offerings,
-    instructors: localFallback?.instructors,
+    instructors: counts && counts.sections > 0 ? undefined : localFallback?.instructors,
     learningOutcomes: item.learning_outcomes?.length ? item.learning_outcomes : undefined,
-    source: localFallback ? 'local' : 'db',
+    // Si el curso ya tiene módulos en la base, la base manda (se puede editar); si no, sigue el contenido de los archivos
+    source: counts && counts.sections > 0 ? 'db' : localFallback ? 'local' : 'db',
   };
 }
 
@@ -179,6 +180,21 @@ export async function fetchDbSections(courseId: string): Promise<SectionMeta[]> 
     }
   }
   return [...byModule.values()].sort((a, b) => a.order - b.order);
+}
+
+// Docentes de una edición (público, sale de la vista offering_teachers: solo ediciones que no son borrador)
+export async function fetchOfferingTeachers(offeringId: string): Promise<Instructor[]> {
+  const { data } = await supabase
+    .from('offering_teachers')
+    .select('user_id,full_name,avatar_url,headline,bio,staff_role')
+    .eq('offering_id', offeringId);
+  return ((data as any[]) ?? []).map((t) => ({
+    name: t.full_name ?? 'Docente',
+    role: t.headline || 'Docente',
+    bio: t.bio || '',
+    image: t.avatar_url || '',
+    weeks: t.staff_role === 'lead' ? 'Docente principal' : 'Docente',
+  }));
 }
 
 export interface DbLesson {
@@ -262,6 +278,25 @@ const lessonFiles = import.meta.glob<LessonModule>(
   '../content/lessons/**/*.mdx',
   { eager: true }
 );
+
+// Texto original (Markdown) de cada lección local; solo se usa al importar los cursos antiguos a la base de datos
+const rawLessonFiles = import.meta.glob<string>('../content/lessons/**/*.mdx', { query: '?raw', import: 'default' });
+
+export interface LocalCourseExport {
+  section: SectionMeta;
+  lessons: { meta: LessonMeta; loadRaw: () => Promise<string> }[];
+}
+
+export function getLocalCourseExport(courseSlug: string): LocalCourseExport[] {
+  return getCourseSections(courseSlug).map((section) => ({
+    section,
+    lessons: section.lessons.map((meta) => {
+      const suffix = `/content/lessons/${courseSlug}/${section.slug}/${meta.slug}.mdx`;
+      const key = Object.keys(rawLessonFiles).find((k) => k.replace(/\\/g, '/').endsWith(suffix));
+      return { meta, loadRaw: key ? rawLessonFiles[key] : async () => '' };
+    }),
+  }));
+}
 
 // ─── Servicios con Supabase (Paso 3 y 4 de GUIA_FRONTEND.md) ────────────────
 

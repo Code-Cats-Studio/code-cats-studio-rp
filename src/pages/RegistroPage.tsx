@@ -1,5 +1,6 @@
 import { useState, useEffect, useId, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { peekRedirect } from '../components/auth/PostLoginRedirect';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 import type { UserProfileUpdateInput } from '../types/auth';
@@ -301,8 +302,17 @@ export default function RegistroPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {peekRedirect() && (
+              <Link
+                to={peekRedirect()!}
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm no-underline transition-all"
+                style={{ fontFamily: 'var(--font-heading)', background: 'var(--verde-limon)', color: 'var(--text-primary)' }}
+              >
+                Continuar con mi inscripción →
+              </Link>
+            )}
             <Link
-              to="/"
+              to="/cursos"
               className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm no-underline transition-all"
               style={{
                 fontFamily: 'var(--font-heading)',

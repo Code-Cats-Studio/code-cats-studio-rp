@@ -12,6 +12,7 @@ import { fetchFilesBySubmission, type SubmissionFile } from '../services/submiss
 import { buildGoogleCalendarUrl, type LiveSession } from '../services/liveSessions';
 import ClassScheduler from '../components/schedule/ClassScheduler';
 import AttendanceList from '../components/schedule/AttendanceList';
+import TeacherCourses from '../components/edition/TeacherCourses';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchAssignmentChoices,
@@ -22,7 +23,7 @@ import {
   type SessionChoice,
 } from '../services/schedules';
 
-type DocenteTab = 'asistencia' | 'roster' | 'calificaciones' | 'clases';
+type DocenteTab = 'asistencia' | 'roster' | 'calificaciones' | 'clases' | 'cursos';
 
 export default function DocentePage() {
   const { user, roles } = useAuth();
@@ -328,7 +329,7 @@ export default function DocentePage() {
       {/* Navegación por pestañas (Tabs) */}
       <nav
         aria-label="Pestañas de navegación docente"
-        className="flex items-center gap-2 border-b border-gray-200 mb-8"
+        className="flex items-center gap-2 border-b border-gray-200 mb-8 overflow-x-auto"
       >
         <button
           type="button"
@@ -381,9 +382,23 @@ export default function DocentePage() {
         >
           🗓️ 4. Clases y horario
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('cursos')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 cursor-pointer ${
+            activeTab === 'cursos'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+          style={{ fontFamily: 'var(--font-heading)' }}
+        >
+          📚 5. Mis cursos
+        </button>
       </nav>
 
       {activeTab === 'clases' && <ClassScheduler />}
+      {activeTab === 'cursos' && <TeacherCourses />}
 
       {/* Contenido según pestaña activa */}
       {activeTab === 'asistencia' && (

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import LessonLayout from '../layouts/LessonLayout';
 import {
+  fetchCourseBySlug,
   flattenLessons,
   getCourseBySlug,
   getCourseSections,
@@ -76,10 +77,25 @@ function LocalLessonPage() {
   );
 }
 
-// Los cursos hechos con archivos MDX se leen del código; los creados desde /admin, de la base de datos.
+// Si el curso ya está en la base de datos, la base manda (se puede editar desde /admin y /docente);
+// si no, se leen los archivos MDX del código.
 export default function LessonPage() {
   const { courseSlug, sectionSlug, lessonSlug } = useParams();
-  const isLocal =
-    courseSlug && sectionSlug && lessonSlug && getLessonModule(courseSlug, sectionSlug, lessonSlug);
-  return isLocal ? <LocalLessonPage /> : <DbLessonPage />;
+  const [source, setSource] = useState<'loading' | 'db' | 'local'>('loading');
+
+  useEffect(() => {
+    if (!courseSlug) return;
+    let alive = true;
+    setSource('loading');
+    void fetchCourseBySlug(courseSlug).then((c) => alive && setSource(c?.source === 'db' ? 'db' : 'local'));
+    return () => {
+      alive = false;
+    };
+  }, [courseSlug]);
+
+  if (source === 'loading') {
+    return <p className="px-6 py-16 text-center" style={{ color: 'var(--text-secondary)' }}>Cargando lección…</p>;
+  }
+  const hasLocal = courseSlug && sectionSlug && lessonSlug && getLessonModule(courseSlug, sectionSlug, lessonSlug);
+  return source === 'local' && hasLocal ? <LocalLessonPage /> : <DbLessonPage />;
 }

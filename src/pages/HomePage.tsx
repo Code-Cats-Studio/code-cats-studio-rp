@@ -72,7 +72,9 @@ export default function HomePage() {
             <p className="lp-hero__sub">Grupo de estudio gratuito donde el código se aprende entre ronroneos</p>
             <Link to="/login" className="lp-btn lp-btn--lime">Unirse gratis</Link>
           </div>
-          <img className="lp-hero__cat" src="/images/mascot/cat-laptop.png" alt="Gato de Code Cats Studio programando en su laptop" width={474} height={371} fetchPriority="high" />
+          <div className="lp-hero__art">
+            <img className="lp-hero__cat" src="/images/mascot/cat-laptop.png" alt="Gato de Code Cats Studio programando en su laptop" width={474} height={371} fetchPriority="high" />
+          </div>
         </div>
         <img className="lp-hero__badge" src="/images/brand/logo-badge.png" alt="" aria-hidden="true" width={128} height={128} />
       </section>
@@ -152,7 +154,7 @@ export default function HomePage() {
           {PROJECTS.map((p, i) => (
             <article className="lp-card lp-reveal" key={p.title} style={{ ['--d' as string]: `${i * 0.1}s` }}>
               <span className="lp-soon">Próximamente</span>
-              <img src={p.image} alt="" loading="lazy" />
+              <div className="lp-card__art"><img src={p.image} alt="" loading="lazy" /></div>
               <div>
                 <h3>{p.title}</h3>
                 <div className="lp-chips" style={{ marginTop: '0.75rem' }}>
