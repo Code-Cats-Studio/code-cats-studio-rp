@@ -23,7 +23,8 @@ export default function HomePage() {
       try {
         const data = await fetchPublishedCourses();
         if (isMounted) {
-          setCourses(data);
+          // Aseguramos que data sea un array para evitar crasheos en el map
+          setCourses(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         if (isMounted) {
@@ -46,7 +47,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <>
+    <main>
       <Hero />
 
       <section id="cursos" className="py-16 px-6" style={{ background: 'var(--bg-secondary)' }}>
@@ -121,7 +122,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-opacity hover:opacity-90"
                 style={{ background: 'var(--azul-gatuno)' }}
               >
                 Reintentar
@@ -129,14 +130,20 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Lista de Cursos Renderizados Dinámicamente */}
-          {!isLoading && !error && (
+          {/* Lista de Cursos */}
+          {!isLoading && !error && courses.length === 0 && (
+            <div className="text-center p-12 rounded-2xl border border-dashed border-gray-300">
+              <p style={{ color: 'var(--text-muted)' }}>No hay cursos publicados en este momento.</p>
+            </div>
+          )}
+
+          {!isLoading && !error && courses.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((course) => (
                 <CourseCard
                   key={course.slug}
-                  slug={course.slug}
-                  title={course.title}
+                  slug={course.slug || ''}
+                  title={course.title || 'Curso sin título'}
                   subtitle={course.subtitle}
                   description={course.description}
                   duration={course.duration}
@@ -154,6 +161,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Sección de Beneficios (Mantenida exactamente igual) */}
       <section className="py-16 px-6" style={{ background: 'var(--bg-primary)' }}>
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -170,6 +178,7 @@ export default function HomePage() {
                   fontSize: '1.125rem',
                   fontWeight: 700,
                   margin: '0 0 0.5rem',
+                  color: 'var(--text-primary)'
                 }}
               >
                 100% Práctico
@@ -178,6 +187,7 @@ export default function HomePage() {
                 Aprende construyendo proyectos reales desde el primer día.
               </p>
             </div>
+            
             <div className="text-center p-6">
               <div
                 className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
@@ -191,6 +201,7 @@ export default function HomePage() {
                   fontSize: '1.125rem',
                   fontWeight: 700,
                   margin: '0 0 0.5rem',
+                  color: 'var(--text-primary)'
                 }}
               >
                 En Español
@@ -199,6 +210,7 @@ export default function HomePage() {
                 Contenido claro y directo, sin barreras de idioma.
               </p>
             </div>
+            
             <div className="text-center p-6">
               <div
                 className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
@@ -212,6 +224,7 @@ export default function HomePage() {
                   fontSize: '1.125rem',
                   fontWeight: 700,
                   margin: '0 0 0.5rem',
+                  color: 'var(--text-primary)'
                 }}
               >
                 A tu ritmo
@@ -223,6 +236,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-    </>
+    </main>
   );
 }

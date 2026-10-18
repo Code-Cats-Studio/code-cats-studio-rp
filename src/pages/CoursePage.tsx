@@ -211,6 +211,41 @@ export default function CoursePage() {
     }
   };
 
+  if (!isLoading && !course) {
+    return <Navigate to="/" replace />;
+  }
+
+  // NUEVO: Bloquea el renderizado de la UI rota mientras carga
+  if (isLoading) {
+    return (
+      <main 
+        className="min-h-[calc(100vh-8rem)] flex items-center justify-center" 
+        style={{ background: 'var(--bg-primary)' }}
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div 
+            className="w-12 h-12 border-4 rounded-full animate-spin"
+            style={{ 
+              borderColor: 'var(--bg-tertiary)', 
+              borderTopColor: 'var(--azul-gatuno)' 
+            }}
+          />
+          <p 
+            className="font-medium animate-pulse"
+            style={{ 
+              fontFamily: 'var(--font-heading)', 
+              color: 'var(--text-muted)' 
+            }}
+          >
+            Preparando el entorno...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  
+
   return (
     <main>
       {/* ── Cabecera del Curso ─────────────────────────────────────────────── */}
