@@ -99,7 +99,7 @@ export default function TeacherCourses() {
                   </button>
                 </span>
               </div>
-              {open === e.id && <EditionHub offeringId={e.id} courseTitle={e.courseTitle} canManageTeam={false} />}
+              {open === e.id && <EditionHub offeringId={e.id} courseTitle={e.courseTitle} canManageTeam={isAdmin} />}
             </li>
           ))}
         </ul>

@@ -17,6 +17,7 @@ import {
 } from '../services/courses';
 import SchedulePicker from '../components/course/SchedulePicker';
 import { enrollWithPreference } from '../services/schedules';
+import { fetchMyEnrollmentRequest, isOfferingTeam, requestEnrollment, type RequestStatus } from '../services/enrollmentRequests';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 
@@ -41,7 +42,8 @@ const learningItems = [
 export default function CoursePage() {
   const { courseSlug } = useParams();
   const navigate = useNavigate();
-  const { user, isProfileComplete } = useAuth();
+  const { user, roles, isProfileComplete } = useAuth();
+  const isStaff = roles.includes('teacher') || roles.includes('admin');
 
   const [course, setCourse] = useState<Course | undefined>(undefined);
   const [activeOffering, setActiveOffering] = useState<CourseOffering | null>(null);
@@ -52,6 +54,11 @@ export default function CoursePage() {
   const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
   const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
   const [preferredGroup, setPreferredGroup] = useState<string | null>(null);
+  // Docentes y admins: equipo de la edición y estado de su solicitud para cursar
+  const [isTeam, setIsTeam] = useState(false);
+  const [myRequest, setMyRequest] = useState<RequestStatus | null>(null);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [isRequesting, setIsRequesting] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'warning' | 'error';
@@ -100,6 +107,14 @@ export default function CoursePage() {
               setAvailability(avail);
             }
 
+            if (user && isStaff) {
+              const [team, req] = await Promise.all([isOfferingTeam(openOffering.id, user.id), fetchMyEnrollmentRequest(openOffering.id, user.id)]);
+              if (isMounted) {
+                setIsTeam(team);
+                setMyRequest(req);
+              }
+            }
+
             // Verificar si el usuario ya está inscrito en esta edición
             if (user) {
               const myEnroll = await checkMyEnrollment(openOffering.id);
@@ -124,7 +139,7 @@ export default function CoursePage() {
     return () => {
       isMounted = false;
     };
-  }, [courseSlug, user]);
+  }, [courseSlug, user, isStaff]);
 
   if (!courseSlug) {
     return <Navigate to="/" replace />;
@@ -141,6 +156,19 @@ export default function CoursePage() {
   const outcomes =
     course?.learningOutcomes ??
     (courseSlug === 'html-css-layouts' && course?.source !== 'db' ? learningItems : sections.map((section) => section.title));
+
+  const handleRequest = async () => {
+    if (!activeOffering) return;
+    setIsRequesting(true);
+    setFeedbackMessage(null);
+    const r = await requestEnrollment(activeOffering.id, requestMessage);
+    if (r.error) setFeedbackMessage({ type: 'error', text: r.error });
+    else {
+      setMyRequest(r.status ?? 'pending');
+      setFeedbackMessage({ type: 'success', text: 'Solicitud enviada. Un administrador la revisará.' });
+    }
+    setIsRequesting(false);
+  };
 
   // 2. Manejador de Inscripción (Paso 4 de la guía)
   const handleEnrollment = async () => {
@@ -375,6 +403,74 @@ export default function CoursePage() {
                   >
                     📅 Inicio: {course.startDate}
                   </span>
+                )}
+              </div>
+            ) : isTeam ? (
+              // Es parte del equipo de esta edición: gestiona, no se inscribe
+              <div className="flex items-center gap-3 flex-wrap">
+                <span
+                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold"
+                  style={{ background: 'var(--bg-accent-soft)', color: 'var(--azul-gatuno)', fontFamily: 'var(--font-heading)' }}
+                >
+                  Eres parte del equipo docente de esta edición
+                </span>
+                <Link
+                  to={roles.includes('admin') ? `/admin/cursos/${course?.id}` : '/docente'}
+                  className="inline-flex items-center px-4 py-3 rounded-xl text-xs font-semibold no-underline"
+                  style={{ background: 'var(--azul-gatuno)', color: '#fff', fontFamily: 'var(--font-heading)' }}
+                >
+                  {roles.includes('admin') ? 'Gestionar este curso' : 'Ir a mi panel docente'}
+                </Link>
+                {firstLesson && (
+                  <Link
+                    to={`/${courseSlug}/${sections[0].slug}/${firstLesson.slug}`}
+                    className="inline-flex items-center px-4 py-3 rounded-xl text-xs font-semibold no-underline"
+                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1.5px solid var(--border)', fontFamily: 'var(--font-heading)' }}
+                  >
+                    Ver vista previa
+                  </Link>
+                )}
+              </div>
+            ) : isStaff && !isEnrolled && myRequest !== 'approved' ? (
+              // Docente o admin que no dicta este curso: necesita permiso para cursarlo
+              <div className="grid gap-3 w-full max-w-md">
+                {myRequest === 'pending' ? (
+                  <span className="px-3.5 py-2.5 rounded-xl text-xs font-bold" style={{ background: 'var(--bg-accent-soft)', color: 'var(--azul-gatuno)', fontFamily: 'var(--font-heading)' }}>
+                    Solicitud enviada: esperando la aprobación de un administrador
+                  </span>
+                ) : (
+                  <>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {myRequest === 'rejected' ? 'Tu solicitud anterior fue rechazada. Puedes enviarla de nuevo. ' : ''}
+                      Como {roles.includes('admin') ? 'administrador' : 'docente'} necesitas el permiso de un administrador para cursar este curso.
+                    </p>
+                    <textarea
+                      value={requestMessage}
+                      onChange={(e) => setRequestMessage(e.target.value)}
+                      maxLength={500}
+                      rows={2}
+                      placeholder="Cuéntanos por qué quieres cursarlo (opcional)"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={isRequesting || !activeOffering}
+                      onClick={() => void handleRequest()}
+                      className="px-5 py-3 rounded-xl text-sm font-semibold text-white cursor-pointer disabled:opacity-50"
+                      style={{ background: 'var(--azul-gatuno)', fontFamily: 'var(--font-heading)', border: 'none' }}
+                    >
+                      {isRequesting ? 'Enviando…' : 'Solicitar inscripción'}
+                    </button>
+                  </>
+                )}
+                {firstLesson && (
+                  <Link
+                    to={`/${courseSlug}/${sections[0].slug}/${firstLesson.slug}`}
+                    className="inline-flex items-center justify-center px-4 py-3 rounded-xl text-xs font-semibold no-underline"
+                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1.5px solid var(--border)', fontFamily: 'var(--font-heading)' }}
+                  >
+                    Ver vista previa
+                  </Link>
                 )}
               </div>
             ) : isEnrolled ? (

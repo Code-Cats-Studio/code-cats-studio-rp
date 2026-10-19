@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchTeachers, type TeacherOption } from '../../services/admin';
 import { fetchOfferingStaff, removeOfferingStaff, setOfferingStaff, type StaffRow } from '../../services/courseAdmin';
+import { useAuth } from '../../context/AuthContext';
 import GroupsAdmin from '../admin/GroupsAdmin';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
@@ -8,7 +9,8 @@ const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disable
 const field = 'px-2 py-1.5 rounded border border-gray-300 text-sm';
 
 // Quiénes dictan la edición (docente principal y apoyo) y los grupos con el horario de cada uno.
-export default function EditionTeam({ offeringId }: { offeringId: string }) {
+export default function EditionTeam({ offeringId, onChange }: { offeringId: string; onChange?: () => void }) {
+  const { user, roles } = useAuth();
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [teacherId, setTeacherId] = useState('');
@@ -18,10 +20,15 @@ export default function EditionTeam({ offeringId }: { offeringId: string }) {
 
   const load = useCallback(async () => {
     const [s, t] = await Promise.all([fetchOfferingStaff(offeringId), fetchTeachers()]);
+    // un admin puede ponerse a sí mismo en el equipo para gestionar la edición
+    const me: TeacherOption[] = user && roles.includes('admin') && !t.some((x) => x.user_id === user.id)
+      ? [{ user_id: user.id, full_name: 'Yo (administrador)', email: user.email ?? null }]
+      : [];
+    const options = [...t, ...me];
     setStaff(s);
-    setTeachers(t);
-    setTeacherId((c) => c || t[0]?.user_id || '');
-  }, [offeringId]);
+    setTeachers(options);
+    setTeacherId((c) => c || options[0]?.user_id || '');
+  }, [offeringId, user, roles]);
 
   useEffect(() => {
     void load();
@@ -33,6 +40,7 @@ export default function EditionTeam({ offeringId }: { offeringId: string }) {
     const error = await setOfferingStaff(offeringId, teacherId, role);
     setMessage(error ?? 'Equipo actualizado.');
     await load();
+    onChange?.();
     setBusy(false);
   };
 
@@ -42,6 +50,7 @@ export default function EditionTeam({ offeringId }: { offeringId: string }) {
     const error = await removeOfferingStaff(offeringId, s.user_id);
     setMessage(error ?? 'Docente quitado de la edición.');
     await load();
+    onChange?.();
     setBusy(false);
   };
 

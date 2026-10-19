@@ -17,7 +17,7 @@ export interface PendingApplication {
 export async function fetchPendingApplications(): Promise<PendingApplication[]> {
   const { data, error } = await supabase
     .from('teacher_applications')
-    .select('id,motivation,experience,links,created_at,user_id, profiles(full_name,email)')
+    .select('id,motivation,experience,links,created_at,user_id, profiles!teacher_applications_user_id_fkey(full_name,email)')
     .eq('status', 'pending')
     .order('created_at');
   if (error || !data) return [];
@@ -112,7 +112,7 @@ export interface TeacherOption {
 export async function fetchTeachers(): Promise<TeacherOption[]> {
   const { data, error } = await supabase
     .from('user_roles')
-    .select('user_id, profiles(full_name,email)')
+    .select('user_id, profiles!user_roles_user_id_fkey(full_name,email)')
     .eq('role', 'teacher');
   if (error || !data) return [];
   return (data as any[]).map((r) => ({
@@ -246,7 +246,7 @@ export interface RoleHolder {
 export async function fetchStaff(): Promise<RoleHolder[]> {
   const { data, error } = await supabase
     .from('user_roles')
-    .select('user_id,role,profiles(full_name,email)')
+    .select('user_id,role,profiles!user_roles_user_id_fkey(full_name,email)')
     .in('role', ['teacher', 'admin'])
     .order('created_at');
   if (error || !data) return [];
@@ -362,4 +362,37 @@ export async function fetchEventRegistrants(eventId: string): Promise<EventRegis
 export async function setEventAttended(eventId: string, userId: string, attended: boolean): Promise<string | null> {
   const { error } = await supabase.from('event_registrations').update({ attended }).eq('event_id', eventId).eq('user_id', userId);
   return error?.message ?? null;
+}
+
+// ─── Directorio de personas ─────────────────────────────────────────────────
+
+export type PersonRole = 'student' | 'teacher' | 'admin';
+
+export interface PersonOffering {
+  offering_id: string;
+  label: string;
+  course: string;
+  as: 'lead' | 'assistant' | 'student';
+  status: string | null;
+}
+
+export interface Person {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  roles: PersonRole[];
+  profile_completed: boolean;
+  status: string;
+  created_at: string;
+  offerings: PersonOffering[];
+}
+
+export async function fetchPeople(filters: { role?: PersonRole; offeringId?: string; search?: string }): Promise<{ people: Person[]; error?: string }> {
+  const { data, error } = await supabase.rpc('admin_list_people', {
+    p_role: filters.role ?? null,
+    p_offering: filters.offeringId ?? null,
+    p_search: filters.search?.trim() || null,
+  });
+  if (error) return { people: [], error: error.message };
+  return { people: ((data as any[]) ?? []) as Person[] };
 }

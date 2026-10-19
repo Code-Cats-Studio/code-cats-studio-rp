@@ -19,6 +19,12 @@ import CoursesAdmin from '../components/admin/CoursesAdmin';
 import GroupsAdmin from '../components/admin/GroupsAdmin';
 import EventsAdmin from '../components/admin/EventsAdmin';
 import StaffAdmin from '../components/admin/StaffAdmin';
+import PeopleAdmin from '../components/admin/PeopleAdmin';
+import {
+  fetchPendingEnrollmentRequests,
+  reviewEnrollmentRequest,
+  type EnrollmentRequestRow,
+} from '../services/enrollmentRequests';
 import { setPageMeta } from '../utils/seo';
 
 const STATUS_OPTIONS: { value: OfferingStatus; label: string }[] = [
@@ -36,6 +42,7 @@ export default function AdminPage() {
   const [applications, setApplications] = useState<PendingApplication[]>([]);
   const [offerings, setOfferings] = useState<AdminOffering[]>([]);
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+  const [enrollRequests, setEnrollRequests] = useState<EnrollmentRequestRow[]>([]);
   const [stats, setStats] = useState<Record<string, OfferingStats | null>>({});
   const [selectedTeachers, setSelectedTeachers] = useState<Record<string, string[]>>({});
   const [groupSize, setGroupSize] = useState(40);
@@ -47,11 +54,13 @@ export default function AdminPage() {
   }, []);
 
   const load = useCallback(async () => {
-    const [apps, offs, teach] = await Promise.all([
+    const [apps, offs, teach, reqs] = await Promise.all([
       fetchPendingApplications(),
       fetchAdminOfferings(),
       fetchTeachers(),
+      fetchPendingEnrollmentRequests(),
     ]);
+    setEnrollRequests(reqs);
     setApplications(apps);
     setOfferings(offs);
     setTeachers(teach);
@@ -141,6 +150,37 @@ export default function AdminPage() {
                     onClick={() => void run(() => reviewApplication(a.id, false), 'Solicitud rechazada.')}>
                     Rechazar
                   </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Docentes y admins que piden cursar un curso */}
+      <section className="mt-10" aria-labelledby="adm-reqs">
+        <h2 id="adm-reqs" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.25rem' }}>
+          Solicitudes para cursar ({enrollRequests.length})
+        </h2>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+          Un docente o administrador necesita tu permiso para inscribirse como estudiante en un curso que no dicta.
+        </p>
+        {enrollRequests.length === 0 ? (
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>No hay solicitudes pendientes.</p>
+        ) : (
+          <ul className="mt-4 grid gap-3">
+            {enrollRequests.map((r) => (
+              <li key={r.id} className="p-4 rounded-xl" style={card}>
+                <p className="font-semibold">
+                  {r.full_name ?? 'Sin nombre'} <span className="font-normal text-sm" style={{ color: 'var(--text-muted)' }}>{r.email}</span>
+                </p>
+                <p className="text-sm">Quiere cursar: <strong>{r.course}</strong> · {r.offering}</p>
+                {r.message && <p className="mt-1 text-sm whitespace-pre-wrap">{r.message}</p>}
+                <div className="mt-3 flex gap-2">
+                  <button type="button" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}
+                    onClick={() => void run(() => reviewEnrollmentRequest(r.id, true), 'Solicitud aprobada: ya puede inscribirse.')}>Aprobar</button>
+                  <button type="button" disabled={busy} className={btn} style={{ border: '1px solid var(--border)' }}
+                    onClick={() => void run(() => reviewEnrollmentRequest(r.id, false), 'Solicitud rechazada.')}>Rechazar</button>
                 </div>
               </li>
             ))}
@@ -255,6 +295,7 @@ export default function AdminPage() {
       <GroupsAdmin />
       <EventsAdmin />
       <StaffAdmin />
+      <PeopleAdmin />
     </main>
   );
 }
