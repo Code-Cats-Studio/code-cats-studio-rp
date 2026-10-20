@@ -6,7 +6,8 @@ export default function TerminosPage() {
     <LegalLayout
       title="Términos y condiciones"
       description="Condiciones de uso de la plataforma de cursos y eventos de Code Cats Studio"
-      updated="18 de octubre de 2026"
+      updated="19 de octubre de 2026"
+      current="terminos"
     >
       <p>
         Estos términos regulan el uso de la plataforma de cursos y eventos de <strong>Code Cats Studio</strong> («la
@@ -99,8 +100,7 @@ export default function TerminosPage() {
       <LegalH2>10. Disponibilidad y responsabilidad</LegalH2>
       <p>
         Hacemos lo posible por mantener la plataforma disponible, pero se ofrece «tal cual», sin garantía de
-        funcionamiento ininterrumpido. Puede haber mantenimientos o fallos de servicios de terceros (Google,
-        Supabase, Cloudflare, YouTube). Dentro de lo que permita la ley, no respondemos por daños indirectos ni por
+        funcionamiento ininterrumpido. Puede haber mantenimientos o fallos de servicios de terceros. Dentro de lo que permita la ley, no respondemos por daños indirectos ni por
         pérdidas derivadas del uso o la imposibilidad de uso de la plataforma. Guarda copia de tus trabajos.
       </p>
 
@@ -127,7 +127,6 @@ export default function TerminosPage() {
       <LegalList
         items={[
           <>Correo: <a href="mailto:code.cats.studio@gmail.com" style={{ color: 'var(--azul-gatuno)' }}>code.cats.studio@gmail.com</a></>,
-          <>WhatsApp: <a href="https://wa.me/59175268812" style={{ color: 'var(--azul-gatuno)' }}>+591 75268812</a></>,
         ]}
       />
     </LegalLayout>

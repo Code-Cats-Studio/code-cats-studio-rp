@@ -3,6 +3,21 @@ import { Link } from 'react-router-dom';
 import { peekRedirect } from '../components/auth/PostLoginRedirect';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
+import { translateProfileError } from '../utils/authErrors';
+import {
+  CI_MAX,
+  CI_MIN,
+  MIN_BIRTH_DATE,
+  PHONE_LENGTH,
+  cleanComplement,
+  cleanName,
+  isValidBirthDate,
+  isValidCI,
+  isValidName,
+  isValidPhone,
+  onlyDigits,
+  todayISO,
+} from '../utils/validation';
 import type { UserProfileUpdateInput } from '../types/auth';
 import { fetchRegions, type Region } from '../services/account';
 import TeacherApplication from '../components/account/TeacherApplication';
@@ -96,7 +111,13 @@ export default function RegistroPage() {
         [name]: value === '' ? '' : Number(value),
       }));
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      const clean =
+        name === 'document_number' ? onlyDigits(value, CI_MAX)
+        : name === 'phone' ? onlyDigits(value, PHONE_LENGTH)
+        : name === 'document_complement' ? cleanComplement(value)
+        : name === 'full_name' ? cleanName(value)
+        : value;
+      setFormData((prev) => ({ ...prev, [name]: clean }));
     }
   };
 
@@ -106,12 +127,16 @@ export default function RegistroPage() {
     setSuccessMessage(null);
 
     // Validaciones del lado del cliente
-    if (!formData.full_name.trim()) {
-      setErrorMessage('Por favor ingresa tu nombre completo.');
+    if (!isValidName(formData.full_name)) {
+      setErrorMessage('Escribe tu nombre completo (solo letras, mínimo 3 caracteres).');
       return;
     }
-    if (!formData.document_number.trim()) {
-      setErrorMessage('Por favor ingresa tu número de documento (CI).');
+    if (!isValidCI(formData.document_number)) {
+      setErrorMessage(`Tu CI debe tener solo números, entre ${CI_MIN} y ${CI_MAX} dígitos.`);
+      return;
+    }
+    if (formData.document_complement && !/^\d?[A-Z]$/.test(formData.document_complement)) {
+      setErrorMessage('El complemento del CI es un dígito y una letra, por ejemplo 1A.');
       return;
     }
     if (formData.document_issued_region_id === '') {
@@ -120,6 +145,14 @@ export default function RegistroPage() {
     }
     if (!formData.birth_date) {
       setErrorMessage('Por favor ingresa tu fecha de nacimiento.');
+      return;
+    }
+    if (!isValidBirthDate(formData.birth_date)) {
+      setErrorMessage('La fecha de nacimiento no es válida.');
+      return;
+    }
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      setErrorMessage(`El teléfono debe tener ${PHONE_LENGTH} dígitos, solo números (ej: 70000000).`);
       return;
     }
     if (!formData.terms_accepted) {
@@ -145,7 +178,7 @@ export default function RegistroPage() {
       const result = await updateProfile(payload);
 
       if (result.error) {
-        setErrorMessage(result.error.message);
+        setErrorMessage(translateProfileError(result.error.message));
       } else {
         setSuccessMessage('¡Perfil guardado con éxito! Ya puedes inscribirte a cualquier curso.');
         setShowEditMode(false);
@@ -153,7 +186,7 @@ export default function RegistroPage() {
     } catch (err) {
       setErrorMessage(
         err instanceof Error
-          ? err.message
+          ? translateProfileError(err.message)
           : 'Ocurrió un error inesperado al actualizar tu perfil.'
       );
     } finally {
@@ -219,7 +252,7 @@ export default function RegistroPage() {
             }}
           >
             Para registrarte y completar tu perfil de estudiante en Code Cats Studio,
-            necesitas iniciar sesión con tu cuenta de Google.
+            necesitas iniciar sesión con tu cuenta de Google o con tu correo.
           </p>
           <button
             type="button"
@@ -252,60 +285,88 @@ export default function RegistroPage() {
             </svg>
             <span>Continuar con Google</span>
           </button>
+          <p className="my-3 text-xs" style={{ color: 'var(--text-muted)' }}>o</p>
+          <Link
+            to="/login"
+            className="w-full inline-flex items-center justify-center px-5 py-3 rounded-xl font-semibold text-sm no-underline"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              border: '1.5px solid var(--azul-gatuno)',
+              color: 'var(--azul-gatuno)',
+              background: 'transparent',
+            }}
+          >
+            Iniciar sesión o crear cuenta con correo
+          </Link>
         </section>
       </main>
     );
   }
 
-  // 3. Si el perfil ya está completo y no está en modo de edición manual
+  // 3. Si el perfil ya está completo y no está en modo de edición manual: se muestran los datos
   if (isProfileComplete && !showEditMode) {
+    const regionName = regions.find((r) => r.id === profile?.document_issued_region_id)?.name;
+    const birth = profile?.birth_date
+      ? new Date(`${profile.birth_date}T00:00:00`).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null;
+    const rows: Array<[string, string | null | undefined]> = [
+      ['Nombre completo', profile?.full_name],
+      ['Correo', user.email],
+      ['Cédula de identidad', profile?.document_number ? `${profile.document_number}${profile.document_complement ? ` ${profile.document_complement}` : ''}${regionName ? ` · ${regionName}` : ''}` : null],
+      ['Fecha de nacimiento', birth],
+      ['Teléfono / WhatsApp', profile?.phone],
+      ['Universidad / Colegio', profile?.institution],
+      ['Carrera / Grado', profile?.degree],
+    ];
+
     return (
       <main
-        className="min-h-[calc(100vh-8rem)] px-6 py-16 flex flex-col items-center justify-center gap-6"
+        className="min-h-[calc(100vh-8rem)] px-6 py-12 flex flex-col items-center gap-6"
         style={{ background: 'var(--bg-secondary)' }}
       >
         <section
-          className="max-w-lg w-full p-8 rounded-2xl text-center"
-          style={{
-            background: 'var(--bg-primary)',
-            border: '1.5px solid var(--border)',
-          }}
+          className="max-w-2xl w-full p-6 md:p-8 rounded-2xl"
+          style={{ background: 'var(--bg-primary)', border: '1.5px solid var(--border)' }}
         >
-          <div
-            className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl font-bold"
-            style={{ background: '#DCFCE7', color: '#16A34A' }}
-          >
-            ✓
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--azul-gatuno)', margin: '0 0 0.25rem' }}>
+                Estudiante
+              </p>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 2.75rem)', margin: 0, color: 'var(--text-primary)' }}>
+                Mi perfil
+              </h1>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowEditMode(true)}
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold text-sm cursor-pointer"
+              style={{ fontFamily: 'var(--font-heading)', background: 'var(--azul-gatuno)', color: '#fff', border: 'none' }}
+            >
+              Editar mis datos
+            </button>
           </div>
-          <h1
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              margin: '0 0 0.75rem',
-            }}
-          >
-            Tu perfil ya está completo. ¡Puedes ir al catálogo a inscribirte!
-          </h1>
-          <p
-            style={{
-              fontSize: '0.9375rem',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.6,
-              marginBottom: '1.75rem',
-            }}
-          >
-            Hola <strong>{profile?.full_name || user.email}</strong>, tus datos han sido
-            verificados y cumples con los requisitos para inscribirte a los cursos y
-            recibir tus certificados oficiales.
-          </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          {successMessage && (
+            <p role="status" className="mt-4 text-sm p-3 rounded-xl" style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', color: '#166534', fontFamily: 'var(--font-heading)' }}>
+              ✓ {successMessage}
+            </p>
+          )}
+
+          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+            {rows.map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs font-bold uppercase" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-muted)' }}>{label}</dt>
+                <dd className="mt-1 text-sm break-words" style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)' }}>{value || 'Sin completar'}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-8 pt-6 flex flex-col sm:flex-row gap-3" style={{ borderTop: '1px solid var(--border)' }}>
             {peekRedirect() && (
               <Link
                 to={peekRedirect()!}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm no-underline transition-all"
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm no-underline"
                 style={{ fontFamily: 'var(--font-heading)', background: 'var(--verde-limon)', color: 'var(--text-primary)' }}
               >
                 Continuar con mi inscripción →
@@ -313,28 +374,11 @@ export default function RegistroPage() {
             )}
             <Link
               to="/cursos"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm no-underline transition-all"
-              style={{
-                fontFamily: 'var(--font-heading)',
-                background: 'var(--azul-gatuno)',
-                color: 'white',
-              }}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm no-underline"
+              style={{ fontFamily: 'var(--font-heading)', background: 'var(--bg-secondary)', color: 'var(--azul-gatuno)', border: '1.5px solid var(--azul-gatuno)' }}
             >
               Explorar cursos →
             </Link>
-            <button
-              type="button"
-              onClick={() => setShowEditMode(true)}
-              className="inline-flex items-center justify-center px-4 py-3 rounded-xl font-semibold text-sm cursor-pointer transition-all"
-              style={{
-                fontFamily: 'var(--font-heading)',
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border)',
-              }}
-            >
-              Editar mis datos
-            </button>
           </div>
         </section>
         <div className="w-full max-w-2xl">
@@ -470,6 +514,9 @@ export default function RegistroPage() {
               name="full_name"
               type="text"
               required
+              minLength={3}
+              maxLength={100}
+              autoComplete="name"
               placeholder="Ej: María Quispe Mamani"
               value={formData.full_name}
               onChange={handleChange}
@@ -496,6 +543,10 @@ export default function RegistroPage() {
                 id={docNumberId}
                 name="document_number"
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                minLength={CI_MIN}
+                maxLength={CI_MAX}
                 required
                 placeholder="Ej: 1234567"
                 value={formData.document_number}
@@ -521,7 +572,7 @@ export default function RegistroPage() {
                 id={docComplementId}
                 name="document_complement"
                 type="text"
-                maxLength={4}
+                maxLength={3}
                 placeholder="Ej: 1A"
                 value={formData.document_complement}
                 onChange={handleChange}
@@ -578,6 +629,8 @@ export default function RegistroPage() {
                 id={birthDateId}
                 name="birth_date"
                 type="date"
+                min={MIN_BIRTH_DATE}
+                max={todayISO()}
                 required
                 value={formData.birth_date}
                 onChange={handleChange}
@@ -601,6 +654,10 @@ export default function RegistroPage() {
                 id={phoneId}
                 name="phone"
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={PHONE_LENGTH}
+                autoComplete="tel-national"
                 placeholder="Ej: 70000000"
                 value={formData.phone}
                 onChange={handleChange}
@@ -627,6 +684,7 @@ export default function RegistroPage() {
                 id={institutionId}
                 name="institution"
                 type="text"
+                maxLength={100}
                 placeholder="Ej: UMSA, UCB, etc."
                 value={formData.institution}
                 onChange={handleChange}
@@ -650,6 +708,7 @@ export default function RegistroPage() {
                 id={degreeId}
                 name="degree"
                 type="text"
+                maxLength={100}
                 placeholder="Ej: Informática, Bachiller..."
                 value={formData.degree}
                 onChange={handleChange}

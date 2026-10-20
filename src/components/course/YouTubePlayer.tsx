@@ -15,6 +15,7 @@ interface YouTubePlayerProps {
   sectionSlug?: string;
   lessonSlug?: string;
   onLessonCompleted?: () => void;
+  readOnly?: boolean; // vista previa: se reproduce pero no se registra avance
 }
 
 export default function YouTubePlayer({
@@ -24,6 +25,7 @@ export default function YouTubePlayer({
   sectionSlug,
   lessonSlug,
   onLessonCompleted,
+  readOnly = false,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -71,7 +73,7 @@ export default function YouTubePlayer({
 
   // Función flush: calcula delta y llama a report_watch_time
   const flush = useCallback(async () => {
-    if (!lastTimeRef.current) return;
+    if (readOnly || !lastTimeRef.current) return;
     const now = Date.now();
     const delta = Math.round((now - lastTimeRef.current) / 1000);
     lastTimeRef.current = playingRef.current ? now : 0;
@@ -85,7 +87,7 @@ export default function YouTubePlayer({
         markAsCompleted();
       }
     }
-  }, [lessonId, markAsCompleted]);
+  }, [lessonId, markAsCompleted, readOnly]);
 
   // Cargar YouTube IFrame API con soporte de privacidad extendida (youtube-nocookie.com)
   useEffect(() => {
@@ -181,6 +183,7 @@ export default function YouTubePlayer({
       </div>
 
       {/* Barra de estado del reproductor */}
+      {!readOnly && (
       <div className="mt-2.5 flex items-center justify-between text-xs px-1 text-gray-500">
         <div className="flex items-center gap-2">
           <span
@@ -200,6 +203,7 @@ export default function YouTubePlayer({
           </span>
         )}
       </div>
+      )}
     </div>
   );
 }

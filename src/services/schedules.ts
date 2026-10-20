@@ -89,9 +89,24 @@ export interface GroupScheduleInput {
   meet: string;
 }
 
+// Enlace de reunión: vacío es válido; si se escribe, debe ser una URL https completa
+export function validateMeetUrl(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || !url.hostname.includes('.')) throw new Error('bad');
+  } catch {
+    return 'El enlace de la clase debe ser una dirección completa que empiece con https://';
+  }
+  return null;
+}
+
 export async function saveGroupSchedule(groupId: string, input: GroupScheduleInput): Promise<string | null> {
   const meet = input.meet.trim();
-  if (meet && !/^https:\/\//i.test(meet)) return 'El enlace de la clase debe empezar con https://';
+  const meetError = validateMeetUrl(meet);
+  if (meetError) return meetError;
+  if (input.start && input.end && input.end <= input.start) return 'La hora de fin debe ser posterior a la de inicio.';
   const { error } = await supabase.rpc('set_group_schedule', {
     p_group: groupId,
     p_label: input.label,
@@ -100,7 +115,17 @@ export async function saveGroupSchedule(groupId: string, input: GroupScheduleInp
     p_end: input.end || null,
     p_meet: meet,
   });
-  return error?.message ?? null;
+  if (error) return error.message;
+  // Las clases ya programadas sin enlace propio heredan el del grupo
+  if (meet) {
+    await supabase
+      .from('live_sessions')
+      .update({ meet_url: meet })
+      .eq('group_id', groupId)
+      .is('meet_url', null)
+      .gte('ends_at', new Date().toISOString());
+  }
+  return null;
 }
 
 // ─── Clases en vivo ─────────────────────────────────────────────────────────
@@ -153,11 +178,34 @@ export async function createClassSession(input: {
   endsLocal: string;
   meet: string;
 }): Promise<string | null> {
-  const meet = input.meet.trim();
-  if (meet && !/^https:\/\//i.test(meet)) return 'El enlace de la clase debe empezar con https://';
+  const meetError = validateMeetUrl(input.meet);
+  if (meetError) return meetError;
+  if (input.title.trim().length < 3) return 'Escribe un título para la clase (mínimo 3 caracteres).';
+  if (!input.startsLocal || !input.endsLocal) return 'Indica la hora de inicio y de fin.';
   const starts = boLocalToIso(input.startsLocal);
   const ends = boLocalToIso(input.endsLocal);
   if (!(new Date(ends) > new Date(starts))) return 'La hora de fin debe ser posterior al inicio.';
+
+  // Choque de horario: una clase del mismo grupo (o de toda la edición) que se cruce con esta
+  const { data: overlapping } = await supabase
+    .from('live_sessions')
+    .select('title,starts_at,group_id')
+    .eq('offering_id', input.offeringId)
+    .lt('starts_at', ends)
+    .gt('ends_at', starts);
+  const clash = (overlapping ?? []).find((o: any) => !input.groupId || !o.group_id || o.group_id === input.groupId);
+  if (clash) {
+    const when = new Date(clash.starts_at).toLocaleString('es-BO', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/La_Paz' });
+    return `Ese horario choca con la clase «${clash.title}» (${when}). Elige otra hora.`;
+  }
+
+  // Sin enlace propio, la clase guarda el del grupo para que los estudiantes siempre lo vean
+  let meet = input.meet.trim();
+  if (!meet && input.groupId) {
+    const { data: group } = await supabase.from('offering_groups').select('meet_url').eq('id', input.groupId).maybeSingle();
+    meet = group?.meet_url ?? '';
+  }
+
   const { error } = await supabase.from('live_sessions').insert({
     offering_id: input.offeringId,
     group_id: input.groupId,

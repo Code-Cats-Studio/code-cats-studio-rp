@@ -6,6 +6,7 @@ import {
   fetchCourseBySlug,
   fetchOfferingAvailability,
   checkMyEnrollment,
+  isOfferingOpen,
   getCourseSections,
   fetchDbSections,
   fetchOfferingTeachers,
@@ -60,6 +61,7 @@ export default function CoursePage() {
   const [requestMessage, setRequestMessage] = useState('');
   const [isRequesting, setIsRequesting] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null);
+  const [removedByStaff, setRemovedByStaff] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'warning' | 'error';
     text: string;
@@ -95,7 +97,7 @@ export default function CoursePage() {
 
           // Buscar la edición abierta o la primera disponible
           const offerings = foundCourse.course_offerings || [];
-          const openOffering = offerings.find((o) => o.status === 'open') || offerings[0] || null;
+          const openOffering = offerings.find(isOfferingOpen) || offerings.find((o) => o.status === 'open') || offerings[0] || null;
           setActiveOffering(openOffering);
 
           // Si hay una edición, consultar su disponibilidad de cupos
@@ -122,6 +124,7 @@ export default function CoursePage() {
                 setIsEnrolled(true);
                 setEnrollmentStatus(myEnroll.status || 'active');
               }
+              if (isMounted) setRemovedByStaff(!!myEnroll.removedByStaff);
             }
           }
         }
@@ -151,7 +154,14 @@ export default function CoursePage() {
 
   const mascotSrc = `/images/mascot/${course?.mascotImage || 'cat-sitting'}.png`;
   const firstLesson = sections[0]?.lessons[0];
-  const isWaitlisted = availability !== null && availability.available === 0;
+  const offeringIsClosed = activeOffering !== null && !isOfferingOpen(activeOffering);
+  const isWaitlisted = !offeringIsClosed && availability !== null && availability.available === 0;
+  // Motivo por el que no se puede mostrar el botón de inscribirse (null = se puede)
+  const blockedReason = removedByStaff
+    ? 'Un docente o administrador te retiró de esta edición. Escríbenos si crees que fue un error.'
+    : offeringIsClosed
+    ? 'Las inscripciones de esta edición están cerradas.'
+    : null;
   // "Qué aprenderás": lo escrito en el curso; si no hay, los títulos de sus módulos
   const outcomes =
     course?.learningOutcomes ??
@@ -302,7 +312,19 @@ export default function CoursePage() {
               </span>
 
               {/* Indicador de Disponibilidad / Lista de Espera */}
-              {availability && (
+              {offeringIsClosed && !isEnrolled ? (
+                <span
+                  className="px-2.5 py-1 rounded-full text-xs font-bold"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-hover)',
+                    fontFamily: 'var(--font-heading)',
+                  }}
+                >
+                  Inscripciones cerradas
+                </span>
+              ) : availability && (
                 <span
                   className="px-2.5 py-1 rounded-full text-xs font-bold transition-all"
                   style={{
@@ -513,11 +535,20 @@ export default function CoursePage() {
             ) : (
               // Usuario no inscrito aún
               <div className="flex items-center gap-3 flex-wrap">
-                {user && activeOffering && (
+                {user && activeOffering && !blockedReason && (
                   <div className="w-full">
                     <SchedulePicker offeringId={activeOffering.id} value={preferredGroup} onChange={setPreferredGroup} />
                   </div>
                 )}
+                {blockedReason && user && (
+                  <span
+                    className="px-3.5 py-2.5 rounded-xl text-xs font-bold"
+                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontFamily: 'var(--font-heading)' }}
+                  >
+                    {blockedReason}
+                  </span>
+                )}
+                {(!blockedReason || !user) && (
                 <button
                   type="button"
                   onClick={() => void handleEnrollment()}
@@ -547,6 +578,7 @@ export default function CoursePage() {
                     <span>Inscribirme gratis al curso →</span>
                   )}
                 </button>
+                )}
 
                 {firstLesson && (
                   <Link

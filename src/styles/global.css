@@ -214,7 +214,7 @@ h1, h2, h3, h4, h5, h6 {
 .prose pre {
   margin: 1.5rem 0;
   border-radius: 0.75rem;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .prose pre code {
@@ -237,6 +237,8 @@ h1, h2, h3, h4, h5, h6 {
 .prose blockquote p { margin-bottom: 0; }
 
 .prose table {
+  display: block;
+  overflow-x: auto;
   width: 100%;
   border-collapse: collapse;
   margin: 1.5rem 0;

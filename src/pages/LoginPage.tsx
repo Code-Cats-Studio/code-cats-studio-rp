@@ -3,6 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { peekRedirect } from '../components/auth/PostLoginRedirect';
 import { setPageMeta } from '../utils/seo';
+import { retryAfterSeconds, translateAuthError } from '../utils/authErrors';
+import { cleanName } from '../utils/validation';
 
 type Mode = 'login' | 'signup' | 'reset';
 
@@ -31,6 +33,14 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  // Segundos de espera antes de poder pedir otro correo (recuperar contraseña / crear cuenta)
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
 
   useEffect(() => {
     setPageMeta('Iniciar sesión', 'Entra o crea tu cuenta de Code Cats Studio con Google o con tu correo');
@@ -49,7 +59,7 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setErrorMessage(null);
     const { error } = await signInWithGoogle();
-    if (error) setErrorMessage(error.message);
+    if (error) setErrorMessage(translateAuthError(error.message));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -61,13 +71,7 @@ export default function LoginPage() {
       if (mode === 'login') {
         const { error } = await signInWithEmail(email, password);
         if (error) {
-          setErrorMessage(
-            /invalid login|credentials/i.test(error.message)
-              ? 'Correo o contraseña incorrectos.'
-              : /not confirmed/i.test(error.message)
-                ? 'Aún no confirmaste tu correo. Revisa tu bandeja (y spam).'
-                : error.message
-          );
+          setErrorMessage(translateAuthError(error.message));
         }
       } else if (mode === 'signup') {
         if (fullName.trim().length < 3) {
@@ -79,15 +83,22 @@ export default function LoginPage() {
           return;
         }
         const { error, needsConfirmation } = await signUpWithEmail(email, password, fullName);
-        if (error) setErrorMessage(error.message);
-        else if (needsConfirmation) {
+        if (error) {
+          setErrorMessage(translateAuthError(error.message));
+          setCooldown(retryAfterSeconds(error.message) ?? 0);
+        } else if (needsConfirmation) {
           setInfoMessage('Te enviamos un correo para confirmar tu cuenta. Ábrelo y pulsa el enlace; luego inicia sesión.');
           setMode('login');
         }
       } else {
         const { error } = await resetPassword(email);
-        if (error) setErrorMessage(error.message);
-        else setInfoMessage('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva.');
+        if (error) {
+          setErrorMessage(translateAuthError(error.message));
+          setCooldown(retryAfterSeconds(error.message) ?? 60);
+        } else {
+          setInfoMessage('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.');
+          setCooldown(60);
+        }
       }
     } finally {
       setBusy(false);
@@ -139,12 +150,12 @@ export default function LoginPage() {
           {mode === 'signup' && (
             <label className="grid gap-1 text-sm">
               Nombre completo
-              <input style={input} value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required />
+              <input style={input} value={fullName} onChange={(e) => setFullName(cleanName(e.target.value))} autoComplete="name" minLength={3} maxLength={100} required />
             </label>
           )}
           <label className="grid gap-1 text-sm">
             Correo
-            <input style={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+            <input style={input} type="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
           </label>
           {mode !== 'reset' && (
             <label className="grid gap-1 text-sm">
@@ -155,11 +166,15 @@ export default function LoginPage() {
           )}
           <button
             type="submit"
-            disabled={busy}
-            className="w-full px-4 py-3 rounded-xl font-semibold cursor-pointer disabled:opacity-60"
+            disabled={busy || (mode !== 'login' && cooldown > 0)}
+            className="w-full px-4 py-3 rounded-xl font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ fontFamily: 'var(--font-heading)', border: '1.5px solid var(--azul-gatuno)', color: 'var(--azul-gatuno)', background: 'transparent' }}
           >
-            {busy ? 'Un momento…' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Crear cuenta' : 'Enviar enlace'}
+            {busy
+              ? 'Un momento…'
+              : mode !== 'login' && cooldown > 0
+                ? `Espera ${cooldown} s para reenviar`
+                : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Crear cuenta' : 'Enviar enlace'}
           </button>
         </form>
 

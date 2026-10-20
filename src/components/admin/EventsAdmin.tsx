@@ -1,3 +1,4 @@
+import { onlyDigits } from '../../utils/validation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   exportEventRegistrations,
@@ -178,7 +179,7 @@ export default function EventsAdmin() {
               <input className={field} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             </label>
             <label className="grid gap-1">Cupo (vacío = sin límite)
-              <input type="number" min={1} className={field} value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+              <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={5} className={field} value={form.capacity} onChange={(e) => setForm({ ...form, capacity: onlyDigits(e.target.value, 5) })} />
             </label>
           </div>
           <label className="flex items-center gap-2">

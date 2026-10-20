@@ -86,13 +86,13 @@ export default function CheckinForm({
 
   return (
     <div
-      className="p-5 rounded-2xl transition-all"
+      className="p-4 sm:p-5 rounded-2xl transition-all w-full min-w-0 box-border"
       style={{
         background: 'var(--bg-primary)',
         border: '1.5px solid var(--border)',
       }}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <span className="text-lg">📋</span>
           <h3
@@ -122,7 +122,7 @@ export default function CheckinForm({
         )}
       </div>
 
-      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '0 0 1rem' }}>
+      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '0 0 1rem', overflowWrap: 'anywhere' }}>
         Ingresa el código de 6 dígitos que dictó el docente durante la sesión en vivo para marcar tu presencia.
       </p>
 
@@ -185,7 +185,7 @@ export default function CheckinForm({
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 min-w-0">
           <input
             type="text"
             required
@@ -194,14 +194,14 @@ export default function CheckinForm({
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} // Solo dígitos
             disabled={isSubmitting}
-            className="flex-1 px-3 py-2 text-center text-sm font-mono tracking-widest font-bold rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="flex-1 min-w-0 w-full px-3 py-2 text-center text-sm font-mono tracking-widest font-bold rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
             style={{ fontSize: '1.1rem', letterSpacing: '0.25em' }}
           />
 
           <button
             type="submit"
             disabled={isSubmitting || code.length !== 6 || !targetSessionId}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed"
+            className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: 'var(--azul-gatuno)',
               fontFamily: 'var(--font-heading)',
@@ -214,7 +214,7 @@ export default function CheckinForm({
 
       {/* Botón de Enlace a Google Calendar */}
       {calendarUrl && (
-        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+        <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-gray-400">¿No quieres perderte la clase?</span>
           <a
             href={calendarUrl}

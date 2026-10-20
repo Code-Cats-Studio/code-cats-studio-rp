@@ -1,3 +1,4 @@
+import { onlyDigits } from '../../utils/validation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   assignPendingToGroups,
@@ -108,7 +109,7 @@ export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?
               </select>
             </label>
             <label className="grid gap-1">Cupo del grupo
-              <input type="number" min={1} className={field} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4} className={field} value={capacity} onChange={(e) => setCapacity(onlyDigits(e.target.value, 4))} />
             </label>
             <button type="submit" disabled={busy || teachers.length === 0} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>
               Crear grupo

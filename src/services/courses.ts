@@ -345,7 +345,7 @@ export async function fetchCourseBySlug(slug: string): Promise<Course | undefine
         '*, topics(name), course_offerings(id,label,status,modality,capacity,starts_on,ends_on,enrollment_closes_at)'
       )
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return getCourseBySlug(slug);
@@ -394,7 +394,7 @@ export async function fetchOfferingAvailability(
       .from('offering_availability')
       .select('capacity,taken,available')
       .eq('offering_id', offeringId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.warn('[CoursesService] Error en offering_availability:', error?.message);
@@ -437,25 +437,72 @@ export async function enrollInOffering(
 
 /**
  * Verifica si el usuario actual ya está inscrito en la edición indicada.
+ * Una inscripción dada de baja no cuenta como inscrito; si quien la dio de baja fue el equipo
+ * (docente o admin) se marca `removedByStaff` para que la persona no pueda volver a inscribirse.
  */
 export async function checkMyEnrollment(
   offeringId: string
-): Promise<{ isEnrolled: boolean; status?: string }> {
+): Promise<{ isEnrolled: boolean; status?: string; removedByStaff?: boolean }> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user.id;
+    if (!uid) return { isEnrolled: false };
+
     const { data, error } = await supabase
       .from('enrollments')
-      .select('id, status, course_offerings(id)')
+      .select('id, status, removed_by')
       .eq('offering_id', offeringId)
+      .eq('user_id', uid)
       .maybeSingle();
 
     if (error || !data) {
       return { isEnrolled: false };
     }
 
+    if (data.status === 'dropped') {
+      return { isEnrolled: false, status: data.status, removedByStaff: data.removed_by != null };
+    }
+
     return { isEnrolled: true, status: data.status };
   } catch {
     return { isEnrolled: false };
   }
+}
+
+/**
+ * ¿La persona está inscrita (activa o completada) en alguna edición de este curso?
+ * Sirve para decidir si puede interactuar con las lecciones o solo ver la vista previa.
+ */
+export async function hasCourseAccess(courseId: string): Promise<boolean> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user.id;
+    if (!uid) return false;
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('id, course_offerings!inner(course_id)')
+      .eq('user_id', uid)
+      .eq('course_offerings.course_id', courseId)
+      .in('status', ['active', 'completed'])
+      .limit(1);
+    return !error && (data?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Una edición acepta inscripciones si está abierta y no pasó su fecha de cierre. */
+export function isOfferingOpen(offering: CourseOffering): boolean {
+  if (offering.status !== 'open') return false;
+  if (!offering.enrollment_closes_at) return true;
+  return new Date(offering.enrollment_closes_at).getTime() > Date.now();
+}
+
+/** 'none' = el curso aún no tiene ediciones (p. ej. contenido local); 'closed' = tiene ediciones pero ninguna acepta inscripciones. */
+export function getEnrollmentState(course: Pick<Course, 'course_offerings'>): 'open' | 'closed' | 'none' {
+  const offerings = course.course_offerings ?? [];
+  if (offerings.length === 0) return 'none';
+  return offerings.some(isOfferingOpen) ? 'open' : 'closed';
 }
 
 // ─── Funciones Síncronas Locales (Compatibilidad MDX) ──────────────────────

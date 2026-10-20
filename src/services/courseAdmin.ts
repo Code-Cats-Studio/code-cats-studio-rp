@@ -1,3 +1,4 @@
+import { isHttpsUrl } from '../utils/validation';
 import { supabase } from '../lib/supabase';
 
 // Crear y editar cursos completos desde /admin (módulos, lecciones, video de YouTube y ediciones).
@@ -396,7 +397,7 @@ export async function createMaterial(offeringId: string, m: {
   title: string; kind: MaterialRow['kind']; url: string; groupId: string | null;
 }): Promise<string | null> {
   if (m.title.trim().length < 2) return 'Ponle un título al material.';
-  if (!/^https:\/\//i.test(m.url.trim())) return 'El enlace debe empezar con https://';
+  if (!isHttpsUrl(m.url)) return 'El enlace debe ser una dirección completa que empiece con https://';
   const { error } = await supabase.from('materials').insert({
     offering_id: offeringId, title: m.title.trim(), kind: m.kind, url: m.url.trim(), group_id: m.groupId,
   });

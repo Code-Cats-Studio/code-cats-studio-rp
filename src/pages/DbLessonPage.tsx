@@ -8,6 +8,7 @@ import {
   fetchDbLesson,
   fetchDbSections,
   fetchMyCompletedLessonIds,
+  hasCourseAccess,
   flattenLessons,
   type Course,
   type DbLesson,
@@ -18,11 +19,20 @@ import { setPageMeta } from '../utils/seo';
 
 const STORAGE_KEY = 'gatuno-completed';
 
-// Copia las lecciones completadas de la base al almacenamiento local para que el índice lateral las marque
+// Copia las lecciones completadas de la base al almacenamiento local para que el índice lateral las marque.
+// La base manda: primero se borra lo que el navegador recordaba de este curso (otra cuenta o una vista previa).
 function mirrorProgress(courseSlug: string, sections: SectionMeta[], completedIds: string[]) {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    const list = new Set<string>(stored ? JSON.parse(stored) : []);
+    const previous: string[] = stored ? JSON.parse(stored) : [];
+    const own = new Set<string>();
+    for (const section of sections) {
+      for (const lesson of section.lessons) {
+        own.add(`${section.slug}/${lesson.slug}`);
+        own.add(`${courseSlug}/${section.slug}/${lesson.slug}`);
+      }
+    }
+    const list = new Set<string>(previous.filter((item) => !own.has(item)));
     for (const section of sections) {
       for (const lesson of section.lessons) {
         if (lesson.id && completedIds.includes(lesson.id)) {
@@ -46,6 +56,7 @@ export default function DbLessonPage() {
   const [course, setCourse] = useState<Course | undefined>();
   const [sections, setSections] = useState<SectionMeta[]>([]);
   const [lesson, setLesson] = useState<DbLesson | null>(null);
+  const [canInteract, setCanInteract] = useState(false);
 
   useEffect(() => {
     if (authLoading || !courseSlug || !sectionSlug || !lessonSlug) return;
@@ -64,13 +75,15 @@ export default function DbLessonPage() {
       const full = await fetchDbLesson(meta.id);
       if (!alive) return;
       if (!full) return setState('locked');
+      // Solo quien está inscrito puede marcar avance o asistencia; los demás ven la vista previa
+      const enrolled = user ? await hasCourseAccess(c.id) : false;
+      if (!alive) return;
+      setCanInteract(enrolled);
       setLesson(full);
       setState('ready');
       setPageMeta(`${full.title} — ${c.title}`, full.description || c.description);
-      if (user) {
-        const done = await fetchMyCompletedLessonIds();
-        if (alive) mirrorProgress(courseSlug, secs, done);
-      }
+      const done = enrolled ? await fetchMyCompletedLessonIds() : [];
+      if (alive) mirrorProgress(courseSlug, secs, done);
     })();
     return () => {
       alive = false;
@@ -125,6 +138,7 @@ export default function DbLessonPage() {
       videoId={lesson.youtubeId ?? undefined}
       dbLessonId={lesson.id}
       onComplete={() => void completeLesson(lesson.id)}
+      readOnly={!canInteract}
     >
       {lesson.contentMd.trim() ? (
         <MarkdownView source={lesson.contentMd} />

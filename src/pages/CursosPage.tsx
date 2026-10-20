@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import CourseCard from '../components/home/CourseCard';
-import { fetchPublishedCourses, type Course } from '../services/courses';
+import { fetchPublishedCourses, getEnrollmentState, type Course } from '../services/courses';
 import { setPageMeta } from '../utils/seo';
 
 export default function CursosPage() {
@@ -28,7 +28,7 @@ export default function CursosPage() {
       {loading ? (
         <p className="mt-8">Cargando…</p>
       ) : (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
             <CourseCard
               key={course.slug}
@@ -44,6 +44,7 @@ export default function CursosPage() {
               mascotImage={course.mascotImage}
               comingSoon={course.comingSoon}
               startDate={course.startDate}
+              enrollmentState={getEnrollmentState(course)}
             />
           ))}
         </div>

@@ -10,7 +10,8 @@ export default function PrivacidadPage() {
     <LegalLayout
       title="Política de privacidad"
       description="Qué datos recopila Code Cats Studio, para qué los usa, con quién los comparte y cómo ejercer tus derechos"
-      updated="18 de octubre de 2026"
+      updated="19 de octubre de 2026"
+      current="privacidad"
     >
       <p>
         Esta política explica cómo <strong>Code Cats Studio</strong> («nosotros»), con sede en La Paz, Bolivia, trata
@@ -66,17 +67,17 @@ export default function PrivacidadPage() {
       </p>
 
       <LegalH2>5. Con quién los compartimos</LegalH2>
-      <p>Solo con proveedores que hacen funcionar el servicio, bajo sus propias condiciones:</p>
+      <p>Solo con los servicios que hacen funcionar la plataforma, obligados a proteger la información:</p>
       <LegalList
         items={[
-          <><strong>Supabase</strong>: base de datos, autenticación y funciones del servidor.</>,
-          <><strong>Cloudflare</strong>: alojamiento y entrega de la página.</>,
-          <><strong>Google</strong>: inicio de sesión y almacenamiento de las entregas en Drive; YouTube (modo de privacidad ampliada) para los videos.</>,
-          <><strong>Resend</strong>: envío de correos electrónicos.</>,
+          <>Nuestro servidor y base de datos, donde se guardan tu cuenta, tus inscripciones y tu avance.</>,
+          <>Los servicios que entregan la página y envían los correos de la plataforma.</>,
+          <>El almacenamiento de las entregas y la reproducción de los videos de las clases.</>,
+          <>Estadísticas internas del uso de los cursos (asistencia, avance y participación), sin fines publicitarios.</>,
         ]}
       />
       <p>
-        Estos proveedores pueden almacenar datos fuera de Bolivia. Más allá de ellos, solo entregaremos datos si lo
+        Estos servicios pueden almacenar datos fuera de Bolivia. Más allá de ellos, solo entregaremos datos si lo
         exige una autoridad competente conforme a la ley.
       </p>
 
@@ -140,8 +141,7 @@ export default function PrivacidadPage() {
 
       <LegalH2>13. Contacto</LegalH2>
       <p>
-        {mail} · WhatsApp{' '}
-        <a href="https://wa.me/59175268812" style={{ color: 'var(--azul-gatuno)' }}>+591 75268812</a>
+        {mail}
       </p>
     </LegalLayout>
   );

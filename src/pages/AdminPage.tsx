@@ -1,3 +1,4 @@
+import { clampInt, onlyDigits } from '../utils/validation';
 import { useCallback, useEffect, useState } from 'react';
 import {
   createGroups,
@@ -195,8 +196,8 @@ export default function AdminPage() {
         </h2>
         <label className="mt-3 flex items-center gap-2 text-sm">
           Tamaño de grupo
-          <input type="number" min={1} max={500} value={groupSize}
-            onChange={(e) => setGroupSize(Math.max(1, Number(e.target.value) || 1))}
+          <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} value={groupSize}
+            onChange={(e) => setGroupSize(clampInt(onlyDigits(e.target.value, 3), 1, 500))}
             className="w-20 px-2 py-1 rounded border border-gray-300" />
         </label>
 
@@ -223,10 +224,12 @@ export default function AdminPage() {
                     </label>
                     <label className="flex items-center gap-1">
                       Cupo
-                      <input type="number" min={1} defaultValue={o.capacity} disabled={busy}
+                      <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4} defaultValue={o.capacity} disabled={busy}
+                        onChange={(e) => { e.target.value = onlyDigits(e.target.value, 4); }}
                         onBlur={(e) => {
-                          const value = Number(e.target.value);
-                          if (value > 0 && value !== o.capacity) {
+                          const value = clampInt(e.target.value, 1, 5000, o.capacity);
+                          e.target.value = String(value);
+                          if (value !== o.capacity) {
                             void run(() => updateOffering(o.id, { capacity: value }), 'Cupo actualizado.');
                           }
                         }}

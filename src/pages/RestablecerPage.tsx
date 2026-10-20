@@ -1,14 +1,17 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { setPageMeta } from '../utils/seo';
+import { translateAuthError } from '../utils/authErrors';
 
 // Destino del enlace "Olvidé mi contraseña": Supabase abre una sesión temporal y aquí se fija la nueva clave.
 export default function RestablecerPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -24,7 +27,16 @@ export default function RestablecerPage() {
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
-    setMessage(error ? { type: 'error', text: error.message } : { type: 'ok', text: 'Listo, tu contraseña se actualizó.' });
+    if (error) {
+      setMessage({ type: 'error', text: translateAuthError(error.message) });
+      return;
+    }
+    // Contraseña cambiada: se bloquea el formulario, se cierra la sesión temporal y se lleva al login
+    setDone(true);
+    setMessage({ type: 'ok', text: '¡Contraseña cambiada correctamente! Te llevamos a iniciar sesión…' });
+    window.setTimeout(() => {
+      void signOut().finally(() => navigate('/login', { replace: true }));
+    }, 2500);
   };
 
   return (
@@ -41,18 +53,18 @@ export default function RestablecerPage() {
           <form onSubmit={(e) => void submit(e)} className="mt-4 grid gap-3">
             <label className="grid gap-1 text-sm">
               Contraseña nueva (mínimo 8 caracteres)
-              <input type="password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)}
+              <input type="password" minLength={8} maxLength={72} required disabled={busy || done} value={password} onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
                 style={{ padding: '0.625rem 0.75rem', borderRadius: '0.75rem', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
             </label>
-            <button type="submit" disabled={busy} className="px-4 py-3 rounded-xl font-semibold cursor-pointer disabled:opacity-60"
+            <button type="submit" disabled={busy || done} className="px-4 py-3 rounded-xl font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ fontFamily: 'var(--font-heading)', background: 'var(--azul-gatuno)', color: '#fff' }}>
-              {busy ? 'Guardando…' : 'Guardar contraseña'}
+              {busy ? 'Guardando…' : done ? 'Contraseña guardada' : 'Guardar contraseña'}
             </button>
             {message && (
               <p role={message.type === 'error' ? 'alert' : 'status'} className="text-sm"
                 style={{ color: message.type === 'error' ? 'var(--error)' : 'var(--text-primary)' }}>
-                {message.text} {message.type === 'ok' && <Link to="/mis-cursos" style={{ color: 'var(--azul-gatuno)' }}>Ir a mis cursos</Link>}
+                {message.text}
               </p>
             )}
           </form>

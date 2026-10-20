@@ -87,7 +87,7 @@ export default function HomePage() {
           <p className="lp-eyebrow lp-reveal">Sobre Nosotros</p>
           <h2 id="lp-about-title" className="lp-title lp-title--lg lp-reveal" style={{ ['--d' as string]: '0.08s' }}>Somos devs que aprenden juntos</h2>
           <p className="lp-about__text lp-reveal" style={{ ['--d' as string]: '0.16s' }}>
-            Un grupo de estudio donde el único requisito es tener ganas, sin costos, sin juicios, con gatos.
+            Un grupo de estudio donde el único requisito es tener ganas, sin costos, sin juicios y con gatos.
           </p>
           <div className="lp-stats">
             {ABOUT_STATS.map((s, i) => (

@@ -6,11 +6,12 @@ interface Props {
   title: string;
   description: string;
   updated: string;
+  current: 'terminos' | 'privacidad';
   children: ReactNode;
 }
 
 // Contenedor común de las páginas legales (/terminos y /privacidad): públicas, sin login.
-export default function LegalLayout({ title, description, updated, children }: Props) {
+export default function LegalLayout({ title, description, updated, current, children }: Props) {
   useEffect(() => {
     setPageMeta(title, description);
     window.scrollTo(0, 0);
@@ -30,8 +31,8 @@ export default function LegalLayout({ title, description, updated, children }: P
         </h1>
         <div className="grid gap-4 text-[0.95rem]">{children}</div>
         <nav aria-label="Otros documentos" className="mt-10 pt-4 text-sm flex gap-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <Link to="/terminos" style={{ color: 'var(--azul-gatuno)' }}>Términos y condiciones</Link>
-          <Link to="/privacidad" style={{ color: 'var(--azul-gatuno)' }}>Política de privacidad</Link>
+          {current !== 'terminos' && <Link to="/terminos" style={{ color: 'var(--azul-gatuno)' }}>Términos y condiciones</Link>}
+          {current !== 'privacidad' && <Link to="/privacidad" style={{ color: 'var(--azul-gatuno)' }}>Política de privacidad</Link>}
         </nav>
       </article>
     </main>

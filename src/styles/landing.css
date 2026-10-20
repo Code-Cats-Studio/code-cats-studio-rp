@@ -52,7 +52,7 @@
 @media (min-width: 900px) { .lp-hero__grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
 .lp-hero h1 { font-family: var(--lp-display); font-weight: 400; font-size: var(--lp-lg); line-height: 1; text-transform: uppercase; }
 .lp-hero h1 em { font-style: normal; color: var(--lp-lime); }
-.lp-hero__sub { font-weight: 700; font-size: var(--lp-body-lg); line-height: 1.25; margin: 1.25rem 0 2rem; max-width: 36ch; }
+.lp .lp-hero__sub { font-weight: 700; font-size: var(--lp-body-lg); line-height: 1.25; margin: 1.25rem 0 2rem; max-width: 36ch; }
 .lp-hero__art { position: relative; width: 100%; max-width: 36rem; justify-self: center; display: grid; place-items: center; aspect-ratio: 1; }
 .lp-hero__art::before { content: ''; position: absolute; inset: 6%; border-radius: 50%; background: var(--lp-lime); }
 .lp-hero__cat { position: relative; width: 88%; filter: drop-shadow(0 14px 0 rgba(15, 16, 55, 0.25)); animation: lp-float 6s ease-in-out infinite; }

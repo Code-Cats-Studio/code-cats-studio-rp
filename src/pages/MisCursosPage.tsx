@@ -13,7 +13,7 @@ import {
 } from '../services/account';
 import CheckinForm from '../components/course/CheckinForm';
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
-import { fetchMyUpcomingClasses, type UpcomingClass } from '../services/schedules';
+import { fetchMyOfferings, fetchMyUpcomingClasses, type OfferingChoice, type UpcomingClass } from '../services/schedules';
 import { setPageMeta } from '../utils/seo';
 
 const STATUS_LABEL: Record<MyEnrollment['status'], string> = {
@@ -26,7 +26,8 @@ const STATUS_LABEL: Record<MyEnrollment['status'], string> = {
 };
 
 export default function MisCursosPage() {
-  const { user, isLoading } = useAuth();
+  const { user, roles, isLoading } = useAuth();
+  const [teaching, setTeaching] = useState<OfferingChoice[]>([]);
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [progress, setProgress] = useState<Record<string, MyProgress | null>>({});
   const [certificates, setCertificates] = useState<MyCertificate[]>([]);
@@ -60,6 +61,13 @@ export default function MisCursosPage() {
   useEffect(() => {
     if (user) void load(user.id);
   }, [user, load]);
+
+  // Docentes y admins: también se muestran los cursos donde dictan
+  const isStaff = roles.includes('teacher') || roles.includes('admin');
+  useEffect(() => {
+    if (user && isStaff) void fetchMyOfferings(user.id, false).then(setTeaching);
+    else setTeaching([]);
+  }, [user, isStaff]);
 
   if (isLoading) return null;
   if (!user) return <Navigate to="/login" replace />;
@@ -131,11 +139,31 @@ export default function MisCursosPage() {
         </section>
       )}
 
+      {teaching.length > 0 && (
+        <section className="mt-8" aria-labelledby="teaching-title">
+          <h2 id="teaching-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', letterSpacing: '0.05em' }}>
+            Cursos que dictas
+          </h2>
+          <ul className="mt-4 grid gap-3">
+            {teaching.map((o) => (
+              <li key={o.id} className="p-4 rounded-xl flex flex-wrap items-center justify-between gap-3"
+                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{o.label}</span>
+                <Link to="/docente" className="px-4 py-2 rounded-xl text-sm font-semibold no-underline"
+                  style={{ fontFamily: 'var(--font-heading)', background: 'var(--azul-gatuno)', color: '#fff' }}>
+                  Ir a mi panel docente
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {loading ? (
         <p className="mt-8">Cargando…</p>
       ) : visible.length === 0 ? (
         <p className="mt-8" style={{ color: 'var(--text-secondary)' }}>
-          Todavía no estás inscrito en ningún curso.{' '}
+          {teaching.length > 0 ? 'No estás cursando ningún curso como estudiante.' : 'Todavía no estás inscrito en ningún curso.'}{' '}
           <Link to="/cursos" className="underline" style={{ color: 'var(--azul-gatuno)' }}>
             Ver catálogo
           </Link>

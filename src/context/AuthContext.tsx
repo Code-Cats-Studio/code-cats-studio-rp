@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   useCallback,
   type ReactNode,
 } from 'react';
@@ -27,9 +28,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Id del usuario ya cargado: evita recargar perfil y estado cuando solo se renueva el token o se vuelve a la pestaña
+  const loadedUserIdRef = useRef<string | null>(null);
 
   // Consulta el perfil y los roles del usuario en Supabase
   const loadUserData = useCallback(async (userId: string) => {
+    loadedUserIdRef.current = userId;
     try {
       const [profileRes, rolesRes] = await Promise.all([
         supabase
@@ -213,11 +217,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!isMounted) return;
 
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      const nextUser = currentSession?.user ?? null;
+      // Misma persona: se conserva el mismo objeto para que las páginas no se vuelvan a cargar solas
+      setUser((prev) => (prev && nextUser && prev.id === nextUser.id ? prev : nextUser));
 
-      if (currentSession?.user) {
-        void loadUserData(currentSession.user.id);
+      if (nextUser) {
+        if (nextUser.id !== loadedUserIdRef.current || _event === 'USER_UPDATED') {
+          void loadUserData(nextUser.id);
+        }
       } else {
+        loadedUserIdRef.current = null;
         setProfile(null);
         setRoles([]);
       }

@@ -29,6 +29,7 @@ interface Props {
   videoId?: string;      // video de YouTube de la lección (solo cursos creados desde la web)
   dbLessonId?: string;   // id de la lección en la base, para reportar avance real
   onComplete?: () => void;
+  readOnly?: boolean;    // vista previa: solo contenido, sin asistencia ni marcar avance
   children: ReactNode;
 }
 
@@ -69,8 +70,13 @@ export default function LessonLayout({
   videoId,
   dbLessonId,
   onComplete,
+  readOnly = false,
   children,
 }: Props) {
+  // El módulo del breadcrumb lleva a la primera lección de ese módulo
+  const sectionFirst = sections.find((sec) => sec.slug === currentSection)?.lessons[0];
+  const sectionHref = sectionFirst ? `/${courseSlug}/${currentSection}/${sectionFirst.slug}` : undefined;
+
   return (
     <div className="flex min-h-screen">
       <Sidebar
@@ -81,9 +87,9 @@ export default function LessonLayout({
         currentLesson={currentLesson}
       />
 
-      <div className="flex-1 flex flex-col md:ml-[var(--sidebar-width)]">
+      <div className="flex-1 min-w-0 flex flex-col md:ml-[var(--sidebar-width)]">
         <header
-          className="sticky top-0 z-20 px-8 py-3 flex items-center gap-2 text-sm"
+          className="sticky top-0 z-20 px-8 py-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
           style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border)' }}
         >
           <Link
@@ -98,7 +104,13 @@ export default function LessonLayout({
             {courseTitle}
           </Link>
           <span style={{ color: 'var(--text-muted)' }}>›</span>
-          <span style={{ color: 'var(--text-secondary)' }}>{sectionTitle}</span>
+          {sectionHref ? (
+            <Link to={sectionHref} className="no-underline" style={{ color: 'var(--text-secondary)' }}>
+              {sectionTitle}
+            </Link>
+          ) : (
+            <span style={{ color: 'var(--text-secondary)' }}>{sectionTitle}</span>
+          )}
           <span style={{ color: 'var(--text-muted)' }}>›</span>
           <span
             style={{ color: 'var(--text-primary)', fontWeight: 500 }}
@@ -108,7 +120,7 @@ export default function LessonLayout({
           </span>
         </header>
 
-        <main className="flex-1 px-8 md:px-12 py-10 max-w-4xl w-full mx-auto">
+        <main className="flex-1 min-w-0 px-5 sm:px-8 md:px-12 py-10 max-w-4xl w-full mx-auto">
           <div className="mb-8">
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span
@@ -177,25 +189,37 @@ export default function LessonLayout({
               courseSlug={courseSlug}
               sectionSlug={currentSection}
               lessonSlug={currentLesson}
+              readOnly={readOnly}
             />
           )}
 
-          <div className="prose">{children}</div>
+          <div className="prose min-w-0 break-words">{children}</div>
 
-          {/* Formulario de Asistencia con código de 6 dígitos y enlace a Google Calendar */}
-          <div className="my-10">
-            <CheckinForm courseTitle={courseTitle} />
-          </div>
+          {readOnly ? (
+            <div
+              className="my-10 px-4 py-3 rounded-xl text-sm"
+              style={{ background: 'var(--bg-accent-soft)', color: 'var(--azul-gatuno)', fontFamily: 'var(--font-heading)' }}
+            >
+              Estás viendo una vista previa. Inscríbete en el curso para marcar asistencia y registrar tu avance.
+            </div>
+          ) : (
+            <>
+              {/* Formulario de Asistencia con código de 6 dígitos y enlace a Google Calendar */}
+              <div className="my-10">
+                <CheckinForm courseTitle={courseTitle} />
+              </div>
 
-          <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
-            <CompleteButton
-              lessonId={`${currentSection}/${currentLesson}`}
-              courseSlug={courseSlug}
-              sectionSlug={currentSection}
-              lessonSlug={currentLesson}
-              onChange={(done) => done && onComplete?.()}
-            />
-          </div>
+              <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
+                <CompleteButton
+                  lessonId={`${currentSection}/${currentLesson}`}
+                  courseSlug={courseSlug}
+                  sectionSlug={currentSection}
+                  lessonSlug={currentLesson}
+                  onChange={(done) => done && onComplete?.()}
+                />
+              </div>
+            </>
+          )}
 
           <LessonNav prev={prev} next={next} />
         </main>

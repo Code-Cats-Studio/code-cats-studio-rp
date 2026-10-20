@@ -1,3 +1,4 @@
+import { clampInt } from '../../utils/validation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   createAssignment,
@@ -94,8 +95,8 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
           <label className="grid gap-1">Indicaciones<textarea className={field} rows={2} value={aDesc} onChange={(e) => setADesc(e.target.value)} /></label>
           <div className="grid sm:grid-cols-3 gap-3">
             <label className="grid gap-1">Fecha límite (Bolivia)<input type="datetime-local" className={field} value={aDue} onChange={(e) => setADue(e.target.value)} /></label>
-            <label className="grid gap-1">Puntaje máximo<input type="number" min={1} className={field} value={aMax} onChange={(e) => setAMax(Number(e.target.value))} /></label>
-            <label className="grid gap-1">Peso en la nota final<input type="number" min={0} step="0.5" className={field} value={aWeight} onChange={(e) => setAWeight(Number(e.target.value))} /></label>
+            <label className="grid gap-1">Puntaje máximo<input type="number" min={1} max={1000} step={1} className={field} value={aMax} onChange={(e) => setAMax(clampInt(e.target.value, 1, 1000, 100))} /></label>
+            <label className="grid gap-1">Peso en la nota final<input type="number" min={0} max={100} step="0.5" className={field} value={aWeight} onChange={(e) => setAWeight(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} /></label>
           </div>
           <div><button type="submit" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Crear tarea</button></div>
         </form>

@@ -539,7 +539,7 @@ export default function Sidebar({
           </button>
 
           {isCheckinOpen && (
-            <div className="mt-2.5 max-h-72 overflow-y-auto">
+            <div className="mt-2.5 max-h-72 overflow-y-auto overflow-x-hidden">
               <CheckinForm courseTitle={courseTitle || activeCourseSlug} />
             </div>
           )}

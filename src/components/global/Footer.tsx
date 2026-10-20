@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function Footer() {
+  const { pathname } = useLocation();
   return (
     <footer style={{ background: "var(--bg-secondary)", borderTop: "1px solid var(--border)" }}>
       <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -22,8 +23,8 @@ export default function Footer() {
           <span>Aprende desarrollo web con cursos prácticos</span>
         </div>
         <nav aria-label="Legal" className="flex items-center gap-4" style={{ fontSize: "0.875rem" }}>
-          <Link to="/terminos" style={{ color: "var(--text-muted)" }}>Términos</Link>
-          <Link to="/privacidad" style={{ color: "var(--text-muted)" }}>Privacidad</Link>
+          {pathname !== "/terminos" && <Link to="/terminos" style={{ color: "var(--text-muted)" }}>Términos</Link>}
+          {pathname !== "/privacidad" && <Link to="/privacidad" style={{ color: "var(--text-muted)" }}>Privacidad</Link>}
         </nav>
         <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", margin: 0 }}>
           Hecho con 🐱 para la comunidad

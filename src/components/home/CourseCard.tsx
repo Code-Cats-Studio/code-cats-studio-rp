@@ -11,6 +11,7 @@ interface Props {
   mascotImage: string;
   comingSoon?: boolean;
   startDate?: string;
+  enrollmentState?: 'open' | 'closed' | 'none';
 }
 
 export default function CourseCard({
@@ -26,13 +27,14 @@ export default function CourseCard({
   mascotImage,
   comingSoon,
   startDate,
+  enrollmentState = 'none',
 }: Props) {
   const mascotSrc = `/images/mascot/${mascotImage}.png`;
   const isAvailable = !comingSoon;
 
   return (
     <div
-      className="group block rounded-2xl overflow-hidden transition-all duration-200"
+      className="group block rounded-2xl overflow-hidden transition-all duration-200 min-w-0"
       style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)" }}
       onMouseOver={(e) => {
         const el = e.currentTarget as HTMLDivElement;
@@ -54,14 +56,26 @@ export default function CourseCard({
       >
         {/* Cabecera con gradiente de color del curso */}
         <div
-          className="p-6 pb-0 flex items-start justify-between gap-4"
+          className="p-5 sm:p-6 pb-0 flex items-start justify-between gap-3 sm:gap-4"
           style={{
             background: `linear-gradient(135deg, ${accentColor}15, ${accentColor}05)`,
           }}
         >
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              {isAvailable ? (
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {isAvailable && enrollmentState === 'closed' ? (
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                  style={{
+                    background: "var(--bg-tertiary)",
+                    color: "var(--text-secondary)",
+                    fontFamily: "var(--font-heading)",
+                    border: "1px solid var(--border-hover)",
+                  }}
+                >
+                  Inscripciones cerradas
+                </span>
+              ) : isAvailable ? (
                 <span
                   className="px-2 py-0.5 rounded-full text-xs font-semibold"
                   style={{
@@ -115,6 +129,7 @@ export default function CourseCard({
                 fontWeight: 700,
                 color: "var(--text-primary)",
                 margin: "0 0 0.25rem",
+                overflowWrap: "anywhere",
               }}
             >
               {title}
@@ -127,12 +142,12 @@ export default function CourseCard({
           <img
             src={mascotSrc}
             alt={title}
-            className="w-20 h-20 object-contain flex-shrink-0"
+            className="w-16 h-16 sm:w-20 sm:h-20 object-contain flex-shrink-0"
           />
         </div>
 
         {/* Cuerpo de la tarjeta */}
-        <div className="p-6 pt-4">
+        <div className="p-5 sm:p-6 pt-4">
           <p
             style={{
               fontSize: "0.875rem",
