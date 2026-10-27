@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import EditionHub from './EditionHub';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer no-underline disabled:opacity-50';
@@ -33,7 +34,7 @@ async function fetchLeadEditions(userId: string, isAdmin: boolean): Promise<Lead
 function PublicProfile({ userId }: { userId: string }) {
   const [headline, setHeadline] = useState('');
   const [bio, setBio] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     void supabase.from('teacher_profiles').select('headline,bio').eq('user_id', userId).maybeSingle().then(({ data }) => {
@@ -45,7 +46,7 @@ function PublicProfile({ userId }: { userId: string }) {
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const { error } = await supabase.from('teacher_profiles').upsert({ user_id: userId, headline: headline.trim() || null, bio: bio.trim() || null });
-    setMessage(error?.message ?? 'Ficha guardada. Se verá en la página de tus cursos.');
+    toast.result(error?.message, 'Ficha guardada. Se verá en la página de tus cursos.');
   };
 
   return (
@@ -55,7 +56,6 @@ function PublicProfile({ userId }: { userId: string }) {
       <label className="grid gap-1">Sobre mí<textarea className={field} rows={3} maxLength={600} value={bio} onChange={(e) => setBio(e.target.value)} /></label>
       <div className="flex items-center gap-3">
         <button type="submit" className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Guardar ficha</button>
-        {message && <span role="status" className="text-xs" style={{ color: 'var(--text-secondary)' }}>{message}</span>}
       </div>
     </form>
   );

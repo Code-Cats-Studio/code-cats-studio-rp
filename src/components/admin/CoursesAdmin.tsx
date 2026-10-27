@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchAdminCourses, type AdminCourseRow } from '../../services/courseAdmin';
 import { importLocalCourse, localCoursesPending } from '../../services/courseImport';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold no-underline';
@@ -10,7 +11,7 @@ const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold no-underline';
 export default function CoursesAdmin() {
   const [courses, setCourses] = useState<AdminCourseRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = () => fetchAdminCourses().then(setCourses);
   useEffect(() => {
@@ -21,9 +22,8 @@ export default function CoursesAdmin() {
 
   const importCourse = async (slug: string) => {
     setBusy(slug);
-    setMessage(null);
     const r = await importLocalCourse(slug);
-    setMessage(r.error ?? 'Curso importado: ya se puede editar, asignarle docentes y abrir ediciones.');
+    toast.result(r.error, 'Curso importado: ya se puede editar, asignarle docentes y abrir ediciones.');
     await load();
     setBusy(null);
   };
@@ -34,7 +34,6 @@ export default function CoursesAdmin() {
         <h2 id="adm-courses" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.25rem' }}>Cursos</h2>
         <Link to="/admin/cursos/nuevo" className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Crear curso</Link>
       </div>
-      {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
       {pending.length > 0 && (
         <div className="mt-4 p-4 rounded-xl" style={{ background: 'var(--bg-lime-soft)', border: '1px solid var(--border)' }}>
           <p className="text-sm font-semibold">Cursos que todavía viven en el código</p>

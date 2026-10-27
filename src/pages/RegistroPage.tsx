@@ -21,6 +21,7 @@ import {
 import type { UserProfileUpdateInput } from '../types/auth';
 import { fetchRegions, type Region } from '../services/account';
 import TeacherApplication from '../components/account/TeacherApplication';
+import { useToast } from '../context/ToastContext';
 
 interface FormData {
   full_name: string;
@@ -53,6 +54,7 @@ export default function RegistroPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [showEditMode, setShowEditMode] = useState<boolean>(false);
   const [regions, setRegions] = useState<Region[]>([]);
 
@@ -178,17 +180,17 @@ export default function RegistroPage() {
       const result = await updateProfile(payload);
 
       if (result.error) {
-        setErrorMessage(translateProfileError(result.error.message));
+        { const msg = translateProfileError(result.error.message); setErrorMessage(msg); toast.error(msg); }
       } else {
-        setSuccessMessage('¡Perfil guardado con éxito! Ya puedes inscribirte a cualquier curso.');
+        { setSuccessMessage('¡Perfil guardado con éxito! Ya puedes inscribirte a cualquier curso.'); toast.success('¡Perfil guardado con éxito!'); }
         setShowEditMode(false);
       }
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? translateProfileError(err.message)
-          : 'Ocurrió un error inesperado al actualizar tu perfil.'
-      );
+      const msg = err instanceof Error
+        ? translateProfileError(err.message)
+        : 'Ocurrió un error inesperado al actualizar tu perfil.';
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

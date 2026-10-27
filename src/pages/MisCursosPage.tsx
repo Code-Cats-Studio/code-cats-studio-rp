@@ -1,3 +1,4 @@
+import { splitScheduleNote } from '../utils/schedule';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +16,7 @@ import CheckinForm from '../components/course/CheckinForm';
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
 import { fetchMyOfferings, fetchMyUpcomingClasses, type OfferingChoice, type UpcomingClass } from '../services/schedules';
 import { setPageMeta } from '../utils/seo';
+import { useToast } from '../context/ToastContext';
 
 const STATUS_LABEL: Record<MyEnrollment['status'], string> = {
   active: 'En curso',
@@ -33,7 +35,7 @@ export default function MisCursosPage() {
   const [certificates, setCertificates] = useState<MyCertificate[]>([]);
   const [classes, setClasses] = useState<UpcomingClass[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     setPageMeta('Mis cursos', 'Tus inscripciones, avance y certificados en Code Cats Studio');
@@ -75,7 +77,7 @@ export default function MisCursosPage() {
   const handleDrop = async (offeringId: string, title: string) => {
     if (!window.confirm(`¿Darte de baja de «${title}»?`)) return;
     const { error } = await dropMyEnrollment(offeringId);
-    setMessage(error ?? 'Te diste de baja del curso.');
+    toast.result(error, 'Te diste de baja del curso.');
     await load(user.id);
   };
 
@@ -86,12 +88,6 @@ export default function MisCursosPage() {
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', letterSpacing: '0.05em' }}>
         Mis cursos
       </h1>
-
-      {message && (
-        <p role="status" className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {message}
-        </p>
-      )}
 
       {classes.length > 0 && (
         <section className="mt-8" aria-labelledby="classes-title">
@@ -106,7 +102,10 @@ export default function MisCursosPage() {
                 style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
               >
                 <div>
-                  <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{c.title}</p>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{splitScheduleNote(c.title).title}</p>
+                  {splitScheduleNote(c.title).note && (
+                    <p className="text-xs font-semibold" style={{ color: '#9A3412' }}>Horario especial: {splitScheduleNote(c.title).note}</p>
+                  )}
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     {c.course_title}{c.group_name ? ` · ${c.group_name}` : ''}
                   </p>

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import TeacherRoute from './components/auth/TeacherRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import PostLoginRedirect from './components/auth/PostLoginRedirect';
@@ -29,6 +30,7 @@ const CodeCatsDaysInscripcionPage = lazy(() => import('./pages/CodeCatsDaysInscr
 export default function App() {
   return (
     <AuthProvider>
+      <ToastProvider>
       <PostLoginRedirect />
       <Suspense fallback={<main role="status" style={{ minHeight: '100dvh', padding: '32px', fontFamily: 'system-ui' }}>Cargando…</main>}>
         <Routes>
@@ -69,6 +71,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      </ToastProvider>
     </AuthProvider>
   );
 }

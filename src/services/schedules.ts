@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { MAX_CLASS_MINUTES, classMinutes, withScheduleNote } from '../utils/schedule';
 
 // Horarios por grupo, elección de horario al inscribirse y clases en vivo (Meet).
 // Las horas se guardan siempre con el desfase de Bolivia (UTC-4).
@@ -177,6 +178,7 @@ export async function createClassSession(input: {
   startsLocal: string;
   endsLocal: string;
   meet: string;
+  reason?: string; // motivo cuando la clase no sigue el horario del grupo
 }): Promise<string | null> {
   const meetError = validateMeetUrl(input.meet);
   if (meetError) return meetError;
@@ -185,6 +187,7 @@ export async function createClassSession(input: {
   const starts = boLocalToIso(input.startsLocal);
   const ends = boLocalToIso(input.endsLocal);
   if (!(new Date(ends) > new Date(starts))) return 'La hora de fin debe ser posterior al inicio.';
+  if (classMinutes(input.startsLocal, input.endsLocal) > MAX_CLASS_MINUTES) return 'Una clase no puede durar más de 5 horas.';
 
   // Choque de horario: una clase del mismo grupo (o de toda la edición) que se cruce con esta
   const { data: overlapping } = await supabase
@@ -209,7 +212,7 @@ export async function createClassSession(input: {
   const { error } = await supabase.from('live_sessions').insert({
     offering_id: input.offeringId,
     group_id: input.groupId,
-    title: input.title.trim(),
+    title: withScheduleNote(input.title, input.reason),
     starts_at: starts,
     ends_at: ends,
     meet_url: meet || null,

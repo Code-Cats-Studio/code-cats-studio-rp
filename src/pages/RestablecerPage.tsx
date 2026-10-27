@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { setPageMeta } from '../utils/seo';
 import { translateAuthError } from '../utils/authErrors';
+import { useToast } from '../context/ToastContext';
 
 // Destino del enlace "Olvidé mi contraseña": Supabase abre una sesión temporal y aquí se fija la nueva clave.
 export default function RestablecerPage() {
@@ -12,6 +13,7 @@ export default function RestablecerPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const toast = useToast();
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -29,11 +31,13 @@ export default function RestablecerPage() {
     setBusy(false);
     if (error) {
       setMessage({ type: 'error', text: translateAuthError(error.message) });
+      toast.error(translateAuthError(error.message));
       return;
     }
     // Contraseña cambiada: se bloquea el formulario, se cierra la sesión temporal y se lleva al login
     setDone(true);
     setMessage({ type: 'ok', text: '¡Contraseña cambiada correctamente! Te llevamos a iniciar sesión…' });
+    toast.success('¡Contraseña cambiada correctamente!');
     window.setTimeout(() => {
       void signOut().finally(() => navigate('/login', { replace: true }));
     }, 2500);

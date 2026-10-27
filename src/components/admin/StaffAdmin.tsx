@@ -9,6 +9,7 @@ import {
   type RoleHolder,
   type RoleInvite,
 } from '../../services/admin';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
@@ -19,7 +20,7 @@ export default function StaffAdmin() {
   const [invites, setInvites] = useState<RoleInvite[]>([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'teacher' | 'admin'>('teacher');
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -36,11 +37,11 @@ export default function StaffAdmin() {
     if (!user || !email.trim()) return;
     setBusy(true);
     const { result, error } = await grantRole(email, role);
-    setMessage(
-      error ??
-        (result === 'granted'
-          ? 'Rol asignado: esa persona ya tenía cuenta.'
-          : 'Invitación enviada por correo. El rol se activa cuando cree su cuenta con ese correo y lo confirme.')
+    toast.result(
+      error,
+      result === 'granted'
+        ? 'Rol asignado: esa persona ya tenía cuenta.'
+        : 'Invitación enviada por correo. El rol se activa cuando cree su cuenta con ese correo y lo confirme.'
     );
     if (!error) setEmail('');
     await load();
@@ -49,13 +50,13 @@ export default function StaffAdmin() {
 
   const remove = async (h: RoleHolder) => {
     if (h.user_id === user?.id && h.role === 'admin') {
-      setMessage('No puedes quitarte tu propio rol de administrador.');
+      toast.error('No puedes quitarte tu propio rol de administrador.');
       return;
     }
     if (!window.confirm(`¿Quitar el rol ${h.role === 'admin' ? 'administrador' : 'docente'} a ${h.email ?? 'esta persona'}?`)) return;
     setBusy(true);
     const error = await revokeRole(h.user_id, h.role);
-    setMessage(error ?? 'Rol quitado.');
+    toast.result(error, 'Rol quitado.');
     await load();
     setBusy(false);
   };
@@ -65,7 +66,6 @@ export default function StaffAdmin() {
       <h2 id="adm-staff" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.25rem' }}>
         Docentes y administradores
       </h2>
-      {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
 
       <form onSubmit={(e) => void add(e)} className="mt-4 p-4 rounded-xl flex flex-wrap items-end gap-3 text-sm" style={card}>
         <label className="grid gap-1 grow">Correo de la persona

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { assignStudentToGroup, fetchEditionGroups, removeStudent, type EditionGroup } from '../../services/courseAdmin';
 import { fetchTeacherRoster, type RosterStudent } from '../../services/teacher';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
@@ -14,7 +15,7 @@ export default function EditionRoster({ offeringId }: { offeringId: string }) {
   const [rows, setRows] = useState<RosterStudent[]>([]);
   const [groups, setGroups] = useState<EditionGroup[]>([]);
   const [showDropped, setShowDropped] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -22,7 +23,7 @@ export default function EditionRoster({ offeringId }: { offeringId: string }) {
     const [r, g] = await Promise.all([fetchTeacherRoster(offeringId, null), fetchEditionGroups(offeringId)]);
     setRows(r.data);
     setGroups(g);
-    if (r.error) setMessage(r.error);
+    if (r.error) toast.error(r.error);
     setLoading(false);
   }, [offeringId]);
 
@@ -32,7 +33,7 @@ export default function EditionRoster({ offeringId }: { offeringId: string }) {
 
   const changeGroup = async (row: RosterStudent, groupId: string) => {
     const error = await assignStudentToGroup(row.enrollment_id, groupId || null);
-    setMessage(error ?? 'Grupo actualizado.');
+    toast.result(error, 'Grupo actualizado.');
     await load();
   };
 
@@ -40,7 +41,7 @@ export default function EditionRoster({ offeringId }: { offeringId: string }) {
     const reason = window.prompt(`Motivo para dar de baja a ${row.full_name}:`);
     if (!reason?.trim()) return;
     const error = await removeStudent(row.enrollment_id, reason.trim());
-    setMessage(error ?? 'Estudiante dado de baja.');
+    toast.result(error, 'Estudiante dado de baja.');
     await load();
   };
 
@@ -54,7 +55,6 @@ export default function EditionRoster({ offeringId }: { offeringId: string }) {
         <span style={{ color: 'var(--text-muted)' }}>{rows.filter((r) => r.status === 'waitlisted').length} en espera</span>
         <label className="flex items-center gap-2"><input type="checkbox" checked={showDropped} onChange={(e) => setShowDropped(e.target.checked)} /> Mostrar bajas</label>
       </div>
-      {message && <p role="status" className="text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
       {loading ? <p className="text-sm">Cargando…</p> : visible.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Todavía no hay estudiantes en esta edición.</p>
       ) : (

@@ -12,6 +12,7 @@ import {
   type EditionGroup,
   type MaterialRow,
 } from '../../services/courseAdmin';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const field = 'w-full px-2 py-1.5 rounded border border-gray-300 text-sm';
@@ -28,7 +29,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
   const [groups, setGroups] = useState<EditionGroup[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const [aTitle, setATitle] = useState('');
@@ -60,7 +61,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
     e.preventDefault();
     setBusy(true);
     const error = await createAssignment(offeringId, { title: aTitle, description: aDesc, dueLocal: aDue, maxScore: aMax, weight: aWeight, groupId: aGroup || null });
-    setMessage(error ?? 'Tarea creada. Los estudiantes la ven en «Tareas y material».');
+    toast.result(error, 'Tarea creada. Los estudiantes la ven en «Tareas y material».');
     if (!error) { setATitle(''); setADesc(''); setADue(''); }
     await load();
     setBusy(false);
@@ -70,7 +71,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
     e.preventDefault();
     setBusy(true);
     const error = await createMaterial(offeringId, { title: mTitle, kind: mKind, url: mUrl, groupId: mGroup || null });
-    setMessage(error ?? 'Material agregado.');
+    toast.result(error, 'Material agregado.');
     if (!error) { setMTitle(''); setMUrl(''); }
     await load();
     setBusy(false);
@@ -78,7 +79,6 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
 
   return (
     <div className="grid gap-8">
-      {message && <p role="status" className="text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
 
       <section aria-labelledby={`as-${offeringId}`}>
         <h3 id={`as-${offeringId}`} className="font-semibold">Tareas</h3>
@@ -110,7 +110,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
                 </span>
               </span>
               <button type="button" className={btn} style={{ border: '1px solid var(--border)' }}
-                onClick={() => window.confirm('¿Eliminar la tarea? También se borran las entregas.') && void deleteAssignment(a.id).then((e) => { setMessage(e ?? 'Tarea eliminada.'); return load(); })}>
+                onClick={() => window.confirm('¿Eliminar la tarea? También se borran las entregas.') && void deleteAssignment(a.id).then((e) => { toast.result(e, 'Tarea eliminada.'); return load(); })}>
                 Eliminar
               </button>
             </li>
@@ -146,7 +146,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
                 <a href={m.url} target="_blank" rel="noopener noreferrer" className="block text-xs truncate" style={{ color: 'var(--azul-gatuno)' }}>{m.url}</a>
               </span>
               <button type="button" className={btn} style={{ border: '1px solid var(--border)' }}
-                onClick={() => window.confirm('¿Quitar este material?') && void deleteMaterial(m.id).then((e) => { setMessage(e ?? 'Material quitado.'); return load(); })}>
+                onClick={() => window.confirm('¿Quitar este material?') && void deleteMaterial(m.id).then((e) => { toast.result(e, 'Material quitado.'); return load(); })}>
                 Quitar
               </button>
             </li>

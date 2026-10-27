@@ -27,6 +27,7 @@ import {
   type EnrollmentRequestRow,
 } from '../services/enrollmentRequests';
 import { setPageMeta } from '../utils/seo';
+import { useToast } from '../context/ToastContext';
 
 const STATUS_OPTIONS: { value: OfferingStatus; label: string }[] = [
   { value: 'draft', label: 'Borrador (oculta)' },
@@ -47,7 +48,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Record<string, OfferingStats | null>>({});
   const [selectedTeachers, setSelectedTeachers] = useState<Record<string, string[]>>({});
   const [groupSize, setGroupSize] = useState(40);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function AdminPage() {
   const run = async (action: () => Promise<string | null>, okText: string) => {
     setBusy(true);
     const error = await action();
-    setMessage(error ?? okText);
+    toast.result(error, okText);
     await load();
     setBusy(false);
   };
@@ -84,7 +85,7 @@ export default function AdminPage() {
     setStats((prev) => ({ ...prev, [id]: null }));
     const s = await fetchOfferingStats(id);
     setStats((prev) => ({ ...prev, [id]: s }));
-    if (!s) setMessage('No se pudieron cargar las estadísticas.');
+    if (!s) toast.error('No se pudieron cargar las estadísticas.');
   };
 
   const toggleTeacher = (offeringId: string, teacherId: string) =>
@@ -99,12 +100,12 @@ export default function AdminPage() {
   const handleGroups = async (offeringId: string) => {
     const ids = selectedTeachers[offeringId] ?? [];
     if (ids.length === 0) {
-      setMessage('Elige al menos un docente para crear los grupos.');
+      toast.error('Elige al menos un docente para crear los grupos.');
       return;
     }
     setBusy(true);
     const r = await createGroups(offeringId, ids, groupSize);
-    setMessage(r.error ?? `Grupos creados: ${r.assigned} estudiantes asignados, ${r.unassigned} sin grupo.`);
+    toast.result(r.error, `Grupos creados: ${r.assigned} estudiantes asignados, ${r.unassigned} sin grupo.`);
     setBusy(false);
   };
 
@@ -113,12 +114,6 @@ export default function AdminPage() {
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', letterSpacing: '0.05em' }}>
         Panel de administración
       </h1>
-
-      {message && (
-        <p role="status" className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {message}
-        </p>
-      )}
 
       <CoursesAdmin />
 

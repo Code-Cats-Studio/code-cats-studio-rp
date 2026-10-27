@@ -3,6 +3,7 @@ import { fetchTeachers, type TeacherOption } from '../../services/admin';
 import { fetchOfferingStaff, removeOfferingStaff, setOfferingStaff, type StaffRow } from '../../services/courseAdmin';
 import { useAuth } from '../../context/AuthContext';
 import GroupsAdmin from '../admin/GroupsAdmin';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
@@ -15,7 +16,7 @@ export default function EditionTeam({ offeringId, onChange }: { offeringId: stri
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [teacherId, setTeacherId] = useState('');
   const [role, setRole] = useState<'lead' | 'assistant'>('lead');
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -38,7 +39,7 @@ export default function EditionTeam({ offeringId, onChange }: { offeringId: stri
     if (!teacherId) return;
     setBusy(true);
     const error = await setOfferingStaff(offeringId, teacherId, role);
-    setMessage(error ?? 'Equipo actualizado.');
+    toast.result(error, 'Equipo actualizado.');
     await load();
     onChange?.();
     setBusy(false);
@@ -48,7 +49,7 @@ export default function EditionTeam({ offeringId, onChange }: { offeringId: stri
     if (!window.confirm(`¿Quitar a ${s.full_name ?? s.email} del equipo de esta edición?`)) return;
     setBusy(true);
     const error = await removeOfferingStaff(offeringId, s.user_id);
-    setMessage(error ?? 'Docente quitado de la edición.');
+    toast.result(error, 'Docente quitado de la edición.');
     await load();
     onChange?.();
     setBusy(false);
@@ -62,7 +63,6 @@ export default function EditionTeam({ offeringId, onChange }: { offeringId: stri
           El <strong>docente principal</strong> programa clases, tareas y material de toda la edición y puede editar el contenido del curso.
           Los docentes de apoyo trabajan con su grupo. Si aquí no ves a alguien, primero dale el rol de docente en «Docentes y administradores».
         </p>
-        {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="grid gap-1 text-sm">Docente
             <select className={field} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>

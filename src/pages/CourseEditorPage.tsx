@@ -23,6 +23,9 @@ import {
 import { getAllCourses, slugify } from '../services/courses';
 import EditionHub from '../components/edition/EditionHub';
 import { setPageMeta } from '../utils/seo';
+import { useToast } from '../context/ToastContext';
+import DurationInput from '../components/ui/DurationInput';
+import { MAX_LESSON_HOURS, MAX_MODULE_HOURS, clampInt, isValidDurationLabel } from '../utils/validation';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const field = 'w-full px-2 py-1.5 rounded border border-gray-300 text-sm';
@@ -61,7 +64,7 @@ function move<T>(list: T[], from: number, to: number): T[] {
 function Editions({ courseId, courseTitle, published }: { courseId: string; courseTitle: string; published: boolean }) {
   const [editions, setEditions] = useState<EditionForm[]>([]);
   const [draft, setDraft] = useState<EditionForm | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [hub, setHub] = useState<string | null>(null);
 
@@ -74,17 +77,20 @@ function Editions({ courseId, courseTitle, published }: { courseId: string; cour
 
   const save = async () => {
     if (!draft) return;
+    if (draft.label.trim().length < 2) return toast.error('Ponle un nombre a la edición (ej.: Edición 1).');
+    if (draft.capacity < 1) return toast.error('El cupo total debe ser al menos 1.');
+    if (draft.enrollment_opens_at && draft.enrollment_closes_at && draft.enrollment_closes_at <= draft.enrollment_opens_at) {
+      return toast.error('El cierre de inscripción debe ser posterior a la apertura.');
+    }
+    if (draft.starts_on && draft.ends_on && draft.ends_on < draft.starts_on) return toast.error('El fin del curso no puede ser antes del inicio.');
     if (draft.status === 'open') {
-      if (!published) {
-        setMessage('Publica el curso antes de abrir inscripciones.');
-        return;
-      }
+      if (!published) return toast.error('Publica el curso antes de abrir inscripciones.');
       const wasOpen = editions.find((e) => e.id === draft.id)?.status === 'open';
       if (!wasOpen && !window.confirm('Al abrir las inscripciones se avisa por correo a todos los usuarios. ¿Continuar?')) return;
     }
     setBusy(true);
     const error = await saveEdition(courseId, draft);
-    setMessage(error ?? 'Edición guardada.');
+    toast.result(error, 'Edición guardada.');
     if (!error) setDraft(null);
     await load();
     setBusy(false);
@@ -99,7 +105,6 @@ function Editions({ courseId, courseTitle, published }: { courseId: string; cour
       <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
         Una edición es una vuelta del curso (fechas y cupos). Los estudiantes se inscriben cuando está en «Inscripciones abiertas».
       </p>
-      {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
 
       {draft && (
         <div className="mt-4 p-4 rounded-xl grid gap-3" style={card}>
@@ -110,18 +115,18 @@ function Editions({ courseId, courseTitle, published }: { courseId: string; cour
                 {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </Field>
-            <Field label="Cupo total"><input type="number" min={1} className={field} value={draft.capacity} onChange={(e) => set('capacity', Number(e.target.value))} /></Field>
+            <Field label="Cupo total"><input type="number" min={1} max={5000} className={field} value={draft.capacity} onChange={(e) => set('capacity', clampInt(e.target.value, 1, 5000, 1))} /></Field>
           </div>
-          <div className="grid sm:grid-cols-4 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Field label="Abre inscripción (Bolivia)"><input type="datetime-local" className={field} value={draft.enrollment_opens_at} onChange={(e) => set('enrollment_opens_at', e.target.value)} /></Field>
             <Field label="Cierra inscripción"><input type="datetime-local" className={field} value={draft.enrollment_closes_at} onChange={(e) => set('enrollment_closes_at', e.target.value)} /></Field>
             <Field label="Inicio del curso"><input type="date" className={field} value={draft.starts_on} onChange={(e) => set('starts_on', e.target.value)} /></Field>
             <Field label="Fin del curso"><input type="date" className={field} value={draft.ends_on} onChange={(e) => set('ends_on', e.target.value)} /></Field>
           </div>
           <div className="grid sm:grid-cols-3 gap-3">
-            <Field label="Nota mínima para aprobar" hint="0 a 100"><input type="number" min={0} max={100} className={field} value={draft.pass_score} onChange={(e) => set('pass_score', Number(e.target.value))} /></Field>
-            <Field label="Asistencia mínima (%)" hint="0 = no se exige"><input type="number" min={0} max={100} className={field} value={draft.min_attendance_pct} onChange={(e) => set('min_attendance_pct', Number(e.target.value))} /></Field>
-            <Field label="Avance mínimo (%)" hint="0 = no se exige"><input type="number" min={0} max={100} className={field} value={draft.min_progress_pct} onChange={(e) => set('min_progress_pct', Number(e.target.value))} /></Field>
+            <Field label="Nota mínima para aprobar" hint="0 a 100"><input type="number" min={0} max={100} className={field} value={draft.pass_score} onChange={(e) => set('pass_score', clampInt(e.target.value, 0, 100, 0))} /></Field>
+            <Field label="Asistencia mínima (%)" hint="0 = no se exige"><input type="number" min={0} max={100} className={field} value={draft.min_attendance_pct} onChange={(e) => set('min_attendance_pct', clampInt(e.target.value, 0, 100, 0))} /></Field>
+            <Field label="Avance mínimo (%)" hint="0 = no se exige"><input type="number" min={0} max={100} className={field} value={draft.min_progress_pct} onChange={(e) => set('min_progress_pct', clampInt(e.target.value, 0, 100, 0))} /></Field>
           </div>
           <div className="flex gap-2">
             <button type="button" disabled={busy} className={btn} style={primary} onClick={() => void save()}>Guardar edición</button>
@@ -192,7 +197,7 @@ function LessonEditor({ lesson, index, total, onChange, onMove, onRemove }: {
           </div>
           <div className="grid sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2"><Field label="Descripción corta"><input className={field} maxLength={300} value={lesson.description} onChange={(e) => set('description', e.target.value)} /></Field></div>
-            <Field label="Duración" hint="Ej.: 1h 30min"><input className={field} value={lesson.duration_label} onChange={(e) => set('duration_label', e.target.value)} /></Field>
+            <DurationInput value={lesson.duration_label} maxHours={MAX_LESSON_HOURS} onChange={(v) => set('duration_label', v)} />
           </div>
           <Field label="Temas (uno por línea)"><textarea className={field} rows={3} value={lesson.topics} onChange={(e) => set('topics', e.target.value)} /></Field>
           <Field label="Video de YouTube (opcional)" hint="Pega el enlace del video «No listado». Si lo agregas, el avance se mide por lo que el estudiante ve.">
@@ -227,7 +232,7 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
   const [form, setForm] = useState<CourseForm | null>(courseId ? null : emptyCourse());
   const [slugTouched, setSlugTouched] = useState(Boolean(courseId));
   const [topics, setTopics] = useState<{ id: number; name: string }[]>([]);
-  const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
 
@@ -248,19 +253,24 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
   const setModule = (mi: number, m: ModuleForm) => set('modules', form.modules.map((x, i) => (i === mi ? m : x)));
 
   const handleSave = async () => {
-    setMessage(null);
+    if (form.title.trim().length < 3) return toast.error('El curso necesita un título (mínimo 3 caracteres).');
+    if (!isTeacher && !form.slug) return toast.error('El curso necesita un enlace (slug).');
     if (!isTeacher && !form.id && getAllCourses().some((c) => c.slug === form.slug)) {
-      setMessage({ type: 'error', text: 'Ese enlace ya lo usa un curso que vive en el código. Elige otro.' });
-      return;
+      return toast.error('Ese enlace ya lo usa un curso que vive en el código. Elige otro.');
+    }
+    for (const [mi, mod] of form.modules.entries()) {
+      if (mod.title.trim().length < 2) return toast.error(`El módulo ${mi + 1} necesita un título.`);
+      if (!isValidDurationLabel(mod.duration_label, MAX_MODULE_HOURS)) return toast.error(`Indica las horas de duración del módulo ${mi + 1} (máximo ${MAX_MODULE_HOURS} h).`);
+      for (const [li, les] of mod.lessons.entries()) {
+        if (les.title.trim().length < 2) return toast.error(`La lección ${li + 1} del módulo ${mi + 1} necesita un título.`);
+        if (!isValidDurationLabel(les.duration_label, MAX_LESSON_HOURS)) return toast.error(`Indica las horas de la lección «${les.title}» (máximo ${MAX_LESSON_HOURS} h).`);
+      }
     }
     setBusy(true);
     const result = await saveCourse(form);
     setBusy(false);
-    if (result.error) {
-      setMessage({ type: 'error', text: result.error });
-      return;
-    }
-    setMessage({ type: 'ok', text: form.is_published ? 'Curso guardado y publicado.' : 'Curso guardado como borrador.' });
+    if (result.error) return toast.error(result.error);
+    toast.success(form.is_published ? 'Curso guardado y publicado.' : 'Curso guardado como borrador.');
     if (!form.id && result.id) {
       navigate(`/admin/cursos/${result.id}`, { replace: true });
     } else if (result.id) {
@@ -272,9 +282,9 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
   const confirmRemove = (what: string) => window.confirm(`¿Quitar ${what}? Se borra al guardar el curso.`);
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10 pb-28" style={{ minHeight: 'calc(100vh - 8rem)' }}>
+    <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-32" style={{ minHeight: 'calc(100vh - 8rem)' }}>
       <Link to={isTeacher ? '/docente' : '/admin'} className="text-sm no-underline" style={{ color: 'var(--azul-gatuno)' }}>← {isTeacher ? 'Panel del docente' : 'Panel de administración'}</Link>
-      <h1 className="mt-2" style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', letterSpacing: '0.05em' }}>
+      <h1 className="mt-2" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.75rem, 6vw, 2.5rem)', letterSpacing: '0.05em' }}>
         {form.id ? 'Editar curso' : 'Crear curso'}
       </h1>
 
@@ -334,7 +344,7 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
             <div key={mod.id ?? `new-${mi}`} className="p-4 rounded-2xl grid gap-3" style={card}>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="grow min-w-[12rem]"><Field label={`Módulo ${mi + 1}`}><input className={field} value={mod.title} placeholder="Fundamentos" onChange={(e) => setModule(mi, { ...mod, title: e.target.value })} /></Field></div>
-                <div className="w-32"><Field label="Duración"><input className={field} value={mod.duration_label} placeholder="4h 30min" onChange={(e) => setModule(mi, { ...mod, duration_label: e.target.value })} /></Field></div>
+                <div className="w-full sm:w-56"><DurationInput value={mod.duration_label} maxHours={MAX_MODULE_HOURS} onChange={(v) => setModule(mi, { ...mod, duration_label: v })} /></div>
                 <Field label="Color"><input type="color" className="h-9 w-14 rounded border border-gray-300" value={mod.color || '#4142F5'} onChange={(e) => setModule(mi, { ...mod, color: e.target.value })} /></Field>
                 <div className="flex gap-2">
                   <button type="button" className={btn} style={outline} disabled={mi === 0} onClick={() => set('modules', move(form.modules, mi, mi - 1))} aria-label="Subir módulo">↑</button>
@@ -362,7 +372,7 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
       )}
 
       {/* Barra de guardado */}
-      <div className="fixed bottom-0 inset-x-0 z-30 px-6 py-3" style={{ background: 'rgba(255,255,255,0.95)', borderTop: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}>
+      <div className="fixed bottom-0 inset-x-0 z-30 px-4 sm:px-6 py-3" style={{ background: 'rgba(255,255,255,0.95)', borderTop: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}>
         <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-4">
           {!isTeacher && (
             <label className="flex items-center gap-2 text-sm">
@@ -374,7 +384,6 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
             {busy ? 'Guardando…' : 'Guardar curso'}
           </button>
           {form.id && form.is_published && <Link to={`/${form.slug}`} className="text-sm no-underline" style={{ color: 'var(--azul-gatuno)' }} target="_blank">Ver en la web ↗</Link>}
-          {message && <span role={message.type === 'error' ? 'alert' : 'status'} className="text-sm" style={{ color: message.type === 'error' ? 'var(--error)' : 'var(--text-primary)' }}>{message.text}</span>}
         </div>
       </div>
     </main>

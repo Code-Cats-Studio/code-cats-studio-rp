@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../../context/ToastContext';
 
 interface Row {
   enrollment_id: string;
@@ -12,7 +13,7 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     if (!sessionId) {
@@ -22,12 +23,11 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
     setLoading(true);
     const { data, error } = await supabase.rpc('get_session_attendance', { p_session: sessionId });
     setRows(error || !Array.isArray(data) ? [] : (data as Row[]));
-    if (error) setMessage(error.message);
+    if (error) toast.error(error.message);
     setLoading(false);
   }, [sessionId]);
 
   useEffect(() => {
-    setMessage(null);
     void load();
   }, [load]);
 
@@ -36,7 +36,6 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
 
   const save = async () => {
     setBusy(true);
-    setMessage(null);
     const present = rows.filter((r) => r.present).map((r) => r.enrollment_id);
     const absent = rows.filter((r) => !r.present).map((r) => r.enrollment_id);
     const calls = [];
@@ -44,7 +43,7 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
     if (absent.length) calls.push(supabase.rpc('mark_attendance_bulk', { p_session: sessionId, p_enrollments: absent, p_present: false }));
     const results = await Promise.all(calls);
     const failed = results.find((r) => r.error);
-    setMessage(failed?.error ? failed.error.message : `Asistencia guardada: ${present.length} presentes, ${absent.length} ausentes.`);
+    toast.result(failed?.error?.message, `Asistencia guardada: ${present.length} presentes, ${absent.length} ausentes.`);
     setBusy(false);
   };
 
@@ -82,7 +81,6 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
           </button>
         </>
       )}
-      {message && <p role="status" className="text-xs text-gray-600 mt-3">{message}</p>}
     </div>
   );
 }

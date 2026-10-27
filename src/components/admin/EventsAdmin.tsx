@@ -10,6 +10,7 @@ import {
   setEventPublished,
   type AdminEvent,
 } from '../../services/admin';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
@@ -24,7 +25,7 @@ const fromInputValue = (local: string) => new Date(`${local}:00-04:00`).toISOStr
 function Registrants({ eventId }: { eventId: string }) {
   const [rows, setRows] = useState<EventRegistrant[]>([]);
   const [query, setQuery] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     void fetchEventRegistrants(eventId).then(setRows);
@@ -34,7 +35,7 @@ function Registrants({ eventId }: { eventId: string }) {
     setRows((all) => all.map((x) => (x.user_id === r.user_id ? { ...x, attended: !x.attended } : x)));
     const error = await setEventAttended(eventId, r.user_id, !r.attended);
     if (error) {
-      setMessage(error);
+      toast.error(error);
       setRows((all) => all.map((x) => (x.user_id === r.user_id ? { ...x, attended: r.attended } : x)));
     }
   };
@@ -46,7 +47,6 @@ function Registrants({ eventId }: { eventId: string }) {
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <strong>Llegaron {active.filter((r) => r.attended).length} de {active.length}</strong>
         <input className="px-2 py-1 rounded border border-gray-300 text-sm" placeholder="Buscar por nombre o correo" value={query} onChange={(e) => setQuery(e.target.value)} />
-        {message && <span role="alert" style={{ color: 'var(--error)' }}>{message}</span>}
       </div>
       <ul className="mt-2 grid gap-1 sm:grid-cols-2">
         {shown.map((r) => (
@@ -85,7 +85,7 @@ const EMPTY: FormState = {
 export default function EventsAdmin() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [form, setForm] = useState<FormState | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [openList, setOpenList] = useState<string | null>(null);
 
@@ -104,7 +104,7 @@ export default function EventsAdmin() {
     ev.preventDefault();
     if (!form) return;
     if (!form.title.trim() || !form.slug.trim() || !form.starts_at) {
-      setMessage('Completa título, enlace (slug) y fecha.');
+      toast.error('Completa título, enlace (slug) y fecha.');
       return;
     }
     setBusy(true);
@@ -117,7 +117,7 @@ export default function EventsAdmin() {
       capacity: form.capacity ? Math.max(1, Number(form.capacity)) : null,
       is_published: form.is_published,
     });
-    setMessage(error ?? 'Evento guardado.');
+    toast.result(error, 'Evento guardado.');
     if (!error) setForm(null);
     await load();
     setBusy(false);
@@ -126,7 +126,7 @@ export default function EventsAdmin() {
   const togglePublish = async (e: AdminEvent) => {
     setBusy(true);
     const error = await setEventPublished(e.id, !e.is_published);
-    setMessage(error ?? (e.is_published ? 'Evento oculto.' : 'Evento publicado: ya se puede inscribir.'));
+    toast.result(error, e.is_published ? 'Evento oculto.' : 'Evento publicado: ya se puede inscribir.');
     await load();
     setBusy(false);
   };
@@ -134,7 +134,7 @@ export default function EventsAdmin() {
   const download = async (e: AdminEvent) => {
     const csv = await exportEventRegistrations(e.id);
     if (csv === null) {
-      setMessage('No se pudo exportar la lista.');
+      toast.error('No se pudo exportar la lista.');
       return;
     }
     const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
@@ -157,7 +157,6 @@ export default function EventsAdmin() {
         )}
       </div>
 
-      {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
 
       {form && (
         <form onSubmit={(e) => void submit(e)} className="mt-4 p-4 rounded-xl grid gap-3 text-sm" style={card}>

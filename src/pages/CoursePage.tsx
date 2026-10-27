@@ -1,3 +1,4 @@
+import { getClosedReason, pickActiveOffering } from '../utils/enrollment';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import TableOfContents from '../components/course/TableOfContents';
@@ -21,6 +22,7 @@ import { enrollWithPreference } from '../services/schedules';
 import { fetchMyEnrollmentRequest, isOfferingTeam, requestEnrollment, type RequestStatus } from '../services/enrollmentRequests';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
+import { useToast } from '../context/ToastContext';
 
 const schedule = [
   { week: '1', content: 'Fundamentos HTML + Primeros Estilos', instructor: 'Jhona' },
@@ -62,10 +64,19 @@ export default function CoursePage() {
   const [isRequesting, setIsRequesting] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null);
   const [removedByStaff, setRemovedByStaff] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState<{
+  const toast = useToast();
+  const [feedbackMessage, setFeedbackMessageState] = useState<{
     type: 'success' | 'warning' | 'error';
     text: string;
   } | null>(null);
+  // El aviso queda junto al botón y además sale como toast
+  const setFeedbackMessage = (m: typeof feedbackMessage) => {
+    setFeedbackMessageState(m);
+    if (!m) return;
+    if (m.type === 'error') toast.error(m.text);
+    else if (m.type === 'success') toast.success(m.text);
+    else toast.info(m.text);
+  };
 
   // Cursos con archivos MDX: índice local. Cursos creados desde /admin: índice desde la base de datos.
   const localSections = courseSlug ? getCourseSections(courseSlug) : [];
@@ -97,7 +108,7 @@ export default function CoursePage() {
 
           // Buscar la edición abierta o la primera disponible
           const offerings = foundCourse.course_offerings || [];
-          const openOffering = offerings.find(isOfferingOpen) || offerings.find((o) => o.status === 'open') || offerings[0] || null;
+          const openOffering = pickActiveOffering(offerings);
           setActiveOffering(openOffering);
 
           // Si hay una edición, consultar su disponibilidad de cupos
@@ -159,8 +170,8 @@ export default function CoursePage() {
   // Motivo por el que no se puede mostrar el botón de inscribirse (null = se puede)
   const blockedReason = removedByStaff
     ? 'Un docente o administrador te retiró de esta edición. Escríbenos si crees que fue un error.'
-    : offeringIsClosed
-    ? 'Las inscripciones de esta edición están cerradas.'
+    : offeringIsClosed && activeOffering
+    ? getClosedReason(activeOffering) ?? 'Las inscripciones de esta edición están cerradas.'
     : null;
   // "Qué aprenderás": lo escrito en el curso; si no hay, los títulos de sus módulos
   const outcomes =
@@ -540,15 +551,14 @@ export default function CoursePage() {
                     <SchedulePicker offeringId={activeOffering.id} value={preferredGroup} onChange={setPreferredGroup} />
                   </div>
                 )}
-                {blockedReason && user && (
-                  <span
-                    className="px-3.5 py-2.5 rounded-xl text-xs font-bold"
-                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontFamily: 'var(--font-heading)' }}
-                  >
-                    {blockedReason}
-                  </span>
+                {blockedReason && (
+                  <div role="status" className="w-full flex items-start gap-3 px-4 py-3 rounded-xl text-sm"
+                    style={{ background: '#FFF7ED', border: '1px solid #FDBA74', color: '#9A3412' }}>
+                    <span aria-hidden className="text-lg leading-none">🔒</span>
+                    <span>{!removedByStaff && <strong>Inscripciones cerradas. </strong>}{blockedReason}</span>
+                  </div>
                 )}
-                {(!blockedReason || !user) && (
+                {!blockedReason && (
                 <button
                   type="button"
                   onClick={() => void handleEnrollment()}

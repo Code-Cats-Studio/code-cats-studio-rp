@@ -11,6 +11,7 @@ import {
 } from '../../services/admin';
 import { fetchTeachingGroups, type TeacherGroup } from '../../services/schedules';
 import GroupScheduleForm from '../schedule/GroupScheduleForm';
+import { useToast } from '../../context/ToastContext';
 
 const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
 const field = 'w-full px-2 py-1.5 rounded border border-gray-300';
@@ -27,7 +28,7 @@ export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState('40');
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -46,12 +47,12 @@ export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?
   const create = async (e: FormEvent) => {
     e.preventDefault();
     if (!offeringId || !teacherId || !name.trim()) {
-      setMessage('Elige edición, docente y un nombre para el grupo.');
+      toast.error('Elige edición, docente y un nombre para el grupo.');
       return;
     }
     setBusy(true);
     const error = await createManualGroup(offeringId, name, teacherId, capacity ? Math.max(1, Number(capacity)) : null);
-    setMessage(error ?? 'Grupo creado. Ahora define su horario y el enlace de la clase.');
+    toast.result(error, 'Grupo creado. Ahora define su horario y el enlace de la clase.');
     if (!error) setName('');
     await load();
     setBusy(false);
@@ -61,7 +62,7 @@ export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?
     if (!window.confirm(`¿Eliminar el grupo «${g.name}»? Sus estudiantes quedarán sin grupo.`)) return;
     setBusy(true);
     const error = await deleteGroup(g.id);
-    setMessage(error ?? 'Grupo eliminado.');
+    toast.result(error, 'Grupo eliminado.');
     await load();
     setBusy(false);
   };
@@ -69,7 +70,7 @@ export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?
   const assign = async () => {
     setBusy(true);
     const r = await assignPendingToGroups(offeringId);
-    setMessage(r.error ?? `Estudiantes asignados según su horario preferido: ${r.assigned}.`);
+    toast.result(r.error, `Estudiantes asignados según su horario preferido: ${r.assigned}.`);
     await load();
     setBusy(false);
   };
@@ -84,7 +85,6 @@ export default function GroupsAdmin({ offeringId: fixedOffering }: { offeringId?
       <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
         Crea un grupo por docente y define su horario. En la página del curso los estudiantes eligen el horario que prefieren.
       </p>
-      {message && <p role="status" className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}
 
       {!fixedOffering && offerings.length === 0 ? (
         <p className="mt-3 text-sm" style={{ color: 'var(--text-muted)' }}>Primero necesitas una edición de curso.</p>

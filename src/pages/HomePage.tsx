@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchPublishedCourses, type Course } from '../services/courses';
 import { setPageMeta } from '../utils/seo';
 import { CountUp, useReveal } from '../components/landing/useReveal';
-import { ABOUT_POINTS, ABOUT_STATS, MARQUEE, PROJECTS, SOCIALS, SYMBOLS } from '../components/landing/data';
+import { ABOUT_POINTS, ABOUT_STATS, LINKTREE_URL, MARQUEE, PROJECTS, SOCIALS, SYMBOLS } from '../components/landing/data';
 import '../styles/landing.css';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -187,6 +187,9 @@ export default function HomePage() {
               </a>
             ))}
           </div>
+          <a className="lp-link lp-reveal" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer" style={{ marginTop: '1.25rem', display: 'inline-block' }}>
+            Más enlaces (Linktree) ↗
+          </a>
         </div>
         <div className="lp-find__right">
           <img src="/images/mascot/cat-falling.png" alt="" aria-hidden="true" loading="lazy" />

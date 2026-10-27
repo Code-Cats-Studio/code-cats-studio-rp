@@ -23,12 +23,12 @@ export const PROJECTS = [
   { title: 'Primeros programas con JavaScript', stack: ['JavaScript'], image: '/images/mascot/gato-js-3.png' },
 ];
 
-// El Linktree reúne las redes oficiales; cambia cada url por el perfil exacto cuando quieras.
+// Perfiles oficiales. El Linktree va aparte (LINKTREE_URL) como enlace extra.
 export const SOCIALS = [
   { name: 'WhatsApp', short: 'WA', url: WHATSAPP_URL },
-  { name: 'TikTok', short: 'TT', url: LINKTREE_URL },
-  { name: 'Instagram', short: 'IG', url: LINKTREE_URL },
-  { name: 'Facebook', short: 'FB', url: LINKTREE_URL },
+  { name: 'TikTok', short: 'TT', url: 'https://www.tiktok.com/@code.cats.studio' },
+  { name: 'Instagram', short: 'IG', url: 'https://www.instagram.com/code_cats.studio' },
+  { name: 'Facebook', short: 'FB', url: 'https://www.facebook.com/people/Code-Cats-Studio/61579204709906/' },
 ];
 
 // Símbolos de la marca ({ } / * > &) que flotan de decoración en el hero.

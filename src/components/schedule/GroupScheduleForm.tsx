@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { WEEKDAYS, saveGroupSchedule, type TeacherGroup } from '../../services/schedules';
+import { useToast } from '../../context/ToastContext';
 
 const field = 'w-full px-2 py-1.5 rounded border border-gray-300';
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
@@ -12,7 +13,7 @@ export default function GroupScheduleForm({ group, onSaved }: { group: TeacherGr
   const [end, setEnd] = useState(group.end_time?.slice(0, 5) ?? '');
   const [meet, setMeet] = useState(group.meet_url ?? '');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const toggleDay = (d: number) => setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d].sort()));
 
@@ -20,7 +21,7 @@ export default function GroupScheduleForm({ group, onSaved }: { group: TeacherGr
     e.preventDefault();
     setBusy(true);
     const error = await saveGroupSchedule(group.id, { label, weekdays, start, end, meet });
-    setMessage(error ?? 'Horario guardado.');
+    toast.result(error, 'Horario guardado.');
     setBusy(false);
     if (!error) onSaved();
   };
@@ -53,7 +54,6 @@ export default function GroupScheduleForm({ group, onSaved }: { group: TeacherGr
       </label>
       <div className="flex items-center gap-3">
         <button type="submit" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Guardar horario</button>
-        {message && <span role="status" className="text-xs" style={{ color: 'var(--text-secondary)' }}>{message}</span>}
       </div>
     </form>
   );

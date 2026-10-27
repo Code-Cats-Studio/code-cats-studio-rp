@@ -5,6 +5,7 @@ import {
   type LiveSession,
 } from '../../services/liveSessions';
 import { fetchMyUpcomingClasses, type UpcomingClass } from '../../services/schedules';
+import { useToast } from '../../context/ToastContext';
 
 interface CheckinFormProps {
   session?: LiveSession | null;
@@ -24,6 +25,7 @@ export default function CheckinForm({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const targetSessionId = session?.id || sessionIdInput;
 
@@ -66,15 +68,17 @@ export default function CheckinForm({
 
       if (result.success) {
         setSuccessMessage('¡Asistencia confirmada con éxito! Quedaste registrado como presente.');
+        toast.success('¡Asistencia confirmada! Quedaste registrado como presente.');
         setCode('');
         onSuccess?.();
       } else {
         setErrorMessage(result.error || 'Código incorrecto o sesión inactiva.');
+        toast.error(result.error || 'Código incorrecto o sesión inactiva.');
       }
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : 'Error inesperado al registrar la asistencia.'
-      );
+      const msg = err instanceof Error ? err.message : 'Error inesperado al registrar la asistencia.';
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

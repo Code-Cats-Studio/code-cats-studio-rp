@@ -5,6 +5,7 @@ import { peekRedirect } from '../components/auth/PostLoginRedirect';
 import { setPageMeta } from '../utils/seo';
 import { retryAfterSeconds, translateAuthError } from '../utils/authErrors';
 import { cleanName } from '../utils/validation';
+import { useToast } from '../context/ToastContext';
 
 type Mode = 'login' | 'signup' | 'reset';
 
@@ -33,6 +34,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const toast = useToast();
   // Segundos de espera antes de poder pedir otro correo (recuperar contraseña / crear cuenta)
   const [cooldown, setCooldown] = useState(0);
 
@@ -59,7 +61,7 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setErrorMessage(null);
     const { error } = await signInWithGoogle();
-    if (error) setErrorMessage(translateAuthError(error.message));
+    if (error) { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -71,7 +73,7 @@ export default function LoginPage() {
       if (mode === 'login') {
         const { error } = await signInWithEmail(email, password);
         if (error) {
-          setErrorMessage(translateAuthError(error.message));
+          { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
         }
       } else if (mode === 'signup') {
         if (fullName.trim().length < 3) {
@@ -84,19 +86,19 @@ export default function LoginPage() {
         }
         const { error, needsConfirmation } = await signUpWithEmail(email, password, fullName);
         if (error) {
-          setErrorMessage(translateAuthError(error.message));
+          { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
           setCooldown(retryAfterSeconds(error.message) ?? 0);
         } else if (needsConfirmation) {
-          setInfoMessage('Te enviamos un correo para confirmar tu cuenta. Ábrelo y pulsa el enlace; luego inicia sesión.');
+          { setInfoMessage('Te enviamos un correo para confirmar tu cuenta. Ábrelo y pulsa el enlace; luego inicia sesión.'); toast.info('Te enviamos un correo para confirmar tu cuenta. Ábrelo y pulsa el enlace; luego inicia sesión.'); }
           setMode('login');
         }
       } else {
         const { error } = await resetPassword(email);
         if (error) {
-          setErrorMessage(translateAuthError(error.message));
+          { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
           setCooldown(retryAfterSeconds(error.message) ?? 60);
         } else {
-          setInfoMessage('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.');
+          { setInfoMessage('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.'); toast.info('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.'); }
           setCooldown(60);
         }
       }

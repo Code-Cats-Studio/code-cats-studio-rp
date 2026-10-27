@@ -297,11 +297,14 @@ export interface EditionGroup {
   id: string;
   name: string;
   schedule_label: string | null;
+  weekdays: number[];
+  start_time: string | null;
+  end_time: string | null;
 }
 
 export async function fetchEditionGroups(offeringId: string): Promise<EditionGroup[]> {
-  const { data } = await supabase.from('offering_groups').select('id,name,schedule_label').eq('offering_id', offeringId).order('position');
-  return (data as EditionGroup[]) ?? [];
+  const { data } = await supabase.from('offering_groups').select('id,name,schedule_label,weekdays,start_time,end_time').eq('offering_id', offeringId).order('position');
+  return ((data as any[]) ?? []).map((g) => ({ ...g, weekdays: g.weekdays ?? [] }) as EditionGroup);
 }
 
 // ─── Equipo docente de una edición ──────────────────────────────────────────
