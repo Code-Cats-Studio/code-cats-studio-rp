@@ -27,11 +27,14 @@ const LOGOS: Record<string, string> = {
   'R00thouse - Hacklab La Paz': '/aliadas/root_logo.png',
   'Microsoft Education Hub - MEH': '/aliadas/meh_logo.png',
   'GDG El Alto': '/aliadas/gdg_logo.png',
+  'Comunidad Software Libre': '/aliadas/logoSoftwareLibre.png',
+  'IEEE TEMS UMSA': '/aliadas/IEE.png',
 };
 const SOCIALS = [
   { key: 'instagram', label: 'Instagram' },
   { key: 'facebook', label: 'Facebook' },
   { key: 'tiktok', label: 'TikTok' },
+  { key: 'linkedin', label: 'LinkedIn' },
 ] as const;
 type Org = { nombre: string; redes: Partial<Record<(typeof SOCIALS)[number]['key'], string>> };
 const SPONSOR_MESSAGE = '¡Hola Code Cats Studio! Quiero que nuestra organización sea sponsor de Code Cats Days 2026 (Expedition 01). ¿Me cuentan más sobre los niveles Expedition Lead, Pathfinder y Trailblazer?';

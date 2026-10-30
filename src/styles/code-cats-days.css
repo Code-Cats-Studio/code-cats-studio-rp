@@ -142,7 +142,7 @@
 @keyframes ccd-pop { from { opacity: 0; transform: translateY(-14px) scale(.88); } to { opacity: 1; transform: none; } }
 @keyframes ccd-hop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 
-.ccd-orgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; list-style: none; margin-block: 56px 0; padding: 0; }
+.ccd-orgs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; list-style: none; margin-block: 56px 0; padding: 0; }
 .ccd-orgs li { display: grid; }
 .ccd-orgs .ccd-org { max-width: none; border: 1px solid var(--ink); border-radius: 16px; }
 .ccd-orgs .ccd-org__btn { min-height: 190px; padding: 28px; }

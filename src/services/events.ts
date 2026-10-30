@@ -17,25 +17,116 @@ export interface EventInfo {
 
 export type ParticipantType = 'attendee' | 'speaker' | 'volunteer' | 'sponsor' | 'community';
 export type ExperienceLevel = 'none' | 'beginner' | 'intermediate' | 'advanced';
-export type TshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL';
+
+export const SOCIAL_FIELDS = [
+  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/tu-usuario' },
+  { key: 'github', label: 'GitHub', placeholder: 'https://github.com/tu-usuario' },
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/tu-usuario' },
+  { key: 'website', label: 'Sitio web o portafolio', placeholder: 'https://tusitio.com' },
+] as const;
+export type SocialKey = (typeof SOCIAL_FIELDS)[number]['key'];
+
+// Qué datos del Cat Pass puede ver quien escanea el QR
+export const VISIBILITY_FIELDS = [
+  { key: 'role_title', label: 'Rol o título' },
+  { key: 'organization', label: 'Institución u organización' },
+  { key: 'socials', label: 'Redes' },
+  { key: 'business_contact', label: 'Contacto de negocios' },
+  { key: 'projects', label: 'Proyectos' },
+  { key: 'open_to', label: 'Estoy abierto/a a…' },
+] as const;
+export type VisibilityKey = (typeof VISIBILITY_FIELDS)[number]['key'];
+
+export interface CatPassProject {
+  name: string;
+  description: string;
+  url: string;
+}
+
+// Campos del Cat Pass que viven en event_profiles.extra (jsonb)
+export interface CatPassExtra {
+  knows: string[];
+  wants_to_learn: string[];
+  goals: string[];
+  talk_about: string;
+  role_title: string;
+  socials: Record<SocialKey, string>;
+  business_contact: string;
+  projects: CatPassProject[];
+  open_to: string[];
+  visible: Record<VisibilityKey, boolean>;
+}
 
 export interface EventProfileInput {
   participant_type: ParticipantType;
   organization: string;
-  tshirt_size: TshirtSize | '';
   experience_level: ExperienceLevel | '';
   interests: string[];
-  dietary_notes: string;
-  how_found_us: string;
   accepts_photos: boolean;
+  extra: CatPassExtra;
 }
 
 export interface MyEventRegistration {
   status: 'registered' | 'waitlisted' | 'cancelled';
-  profile: Omit<EventProfileInput, 'tshirt_size' | 'experience_level'> & {
-    tshirt_size: TshirtSize | null;
+  profile: Omit<EventProfileInput, 'experience_level' | 'extra'> & {
     experience_level: ExperienceLevel | null;
+    extra: unknown;
   } | null;
+}
+
+export const MAX_PROJECTS = 3;
+export const TALK_ABOUT_MAX = 300;
+
+export const emptyExtra = (): CatPassExtra => ({
+  knows: [], wants_to_learn: [], goals: [], talk_about: '',
+  role_title: '', socials: { linkedin: '', github: '', instagram: '', website: '' },
+  business_contact: '', projects: [], open_to: [],
+  visible: { role_title: true, organization: true, socials: true, business_contact: false, projects: true, open_to: true },
+});
+
+const asStrings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+const asString = (v: unknown): string => (typeof v === 'string' ? v : '');
+
+// Lo que viene de la BD no es de fiar: se normaliza a la forma esperada
+export function parseExtra(raw: unknown): CatPassExtra {
+  const base = emptyExtra();
+  if (!raw || typeof raw !== 'object') return base;
+  const r = raw as Record<string, unknown>;
+  const socials = (r.socials && typeof r.socials === 'object' ? r.socials : {}) as Record<string, unknown>;
+  const visible = (r.visible && typeof r.visible === 'object' ? r.visible : {}) as Record<string, unknown>;
+  const projects = Array.isArray(r.projects) ? r.projects : [];
+  return {
+    knows: asStrings(r.knows),
+    wants_to_learn: asStrings(r.wants_to_learn),
+    goals: asStrings(r.goals),
+    talk_about: asString(r.talk_about),
+    role_title: asString(r.role_title),
+    socials: Object.fromEntries(SOCIAL_FIELDS.map(({ key }) => [key, asString(socials[key])])) as Record<SocialKey, string>,
+    business_contact: asString(r.business_contact),
+    projects: projects.slice(0, MAX_PROJECTS).map((p) => {
+      const o = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>;
+      return { name: asString(o.name), description: asString(o.description), url: asString(o.url) };
+    }),
+    open_to: asStrings(r.open_to),
+    visible: Object.fromEntries(
+      VISIBILITY_FIELDS.map(({ key }) => [key, typeof visible[key] === 'boolean' ? visible[key] : base.visible[key]]),
+    ) as Record<VisibilityKey, boolean>,
+  };
+}
+
+// Se guarda solo lo que tiene contenido
+export function cleanExtra(extra: CatPassExtra): CatPassExtra {
+  return {
+    ...extra,
+    talk_about: extra.talk_about.trim().slice(0, TALK_ABOUT_MAX),
+    role_title: extra.role_title.trim(),
+    business_contact: extra.business_contact.trim(),
+    socials: Object.fromEntries(SOCIAL_FIELDS.map(({ key }) => [key, extra.socials[key].trim()])) as Record<SocialKey, string>,
+    projects: extra.projects
+      .map((p) => ({ name: p.name.trim(), description: p.description.trim(), url: p.url.trim() }))
+      .filter((p) => p.name || p.description || p.url)
+      .slice(0, MAX_PROJECTS),
+  };
 }
 
 export const PARTICIPANT_TYPES: { value: ParticipantType; label: string }[] = [
@@ -53,7 +144,22 @@ export const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string }[] = [
   { value: 'advanced', label: 'Avanzado' },
 ];
 
-export const TSHIRT_SIZES: TshirtSize[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+export const TECH_OPTIONS = [
+  'HTML', 'CSS', 'JavaScript', 'TypeScript', 'Python',
+  'Java', 'PHP', 'SQL', 'C#', 'C/C++',
+  'Go', 'Rust', 'Dart/Flutter', 'Bash', 'Otros',
+];
+
+export const GOAL_OPTIONS = [
+  'Aprender cosas nuevas',
+  'Hacer contactos',
+  'Buscar empleo o pasantía',
+  'Encontrar equipo',
+  'Mostrar mi proyecto',
+  'Conocer comunidades',
+];
+
+export const OPEN_TO_OPTIONS = ['Colaborar en proyectos', 'Mentoría', 'Ofertas de trabajo', 'Freelance'];
 
 export const INTEREST_OPTIONS = [
   'Desarrollo web',
@@ -86,7 +192,7 @@ export async function fetchMyEventRegistration(eventId: string, userId: string):
   if (!reg) return null;
   const { data: profile } = await supabase
     .from('event_profiles')
-    .select('participant_type,organization,tshirt_size,experience_level,interests,dietary_notes,how_found_us,accepts_photos')
+    .select('participant_type,organization,experience_level,interests,accepts_photos,extra')
     .eq('event_id', eventId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -100,7 +206,7 @@ export async function fetchMyEventRegistration(eventId: string, userId: string):
 export async function registerForEvent(eventId: string, profile: EventProfileInput): Promise<'registered' | 'waitlisted'> {
   const { data, error } = await supabase.rpc('register_for_event_with_profile', {
     p_event: eventId,
-    p_profile: profile,
+    p_profile: { ...profile, extra: cleanExtra(profile.extra) },
   });
   if (error) throw new Error(error.message);
   return data as 'registered' | 'waitlisted';
@@ -113,12 +219,10 @@ export async function updateMyEventProfile(eventId: string, userId: string, prof
     .update({
       participant_type: profile.participant_type,
       organization: profile.organization.trim() || null,
-      tshirt_size: profile.tshirt_size || null,
       experience_level: profile.experience_level || null,
       interests: profile.interests,
-      dietary_notes: profile.dietary_notes.trim() || null,
-      how_found_us: profile.how_found_us.trim() || null,
       accepts_photos: profile.accepts_photos,
+      extra: cleanExtra(profile.extra),
     })
     .eq('event_id', eventId)
     .eq('user_id', userId);

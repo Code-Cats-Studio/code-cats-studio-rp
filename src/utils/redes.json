@@ -34,6 +34,20 @@
 				"instagram": "https://www.instagram.com/gdg.elalto/",
 				"tiktok": "https://www.tiktok.com/@gdg.elalto?lang=es"
 			}
+		},
+		{
+			"nombre": "Comunidad Software Libre",
+			"redes": {
+				"facebook": "https://www.facebook.com/groups/slobolivia/?locale=es_LA"
+			}
+		},
+		{
+			"nombre": "IEEE TEMS UMSA",
+			"redes": {
+				"facebook": "https://www.facebook.com/ieeetemsUMSA/",
+				"instagram": "https://www.instagram.com/ieee.tems.umsa/",
+				"linkedin": "https://www.linkedin.com/company/ieee-tems-student-chapter-umsa/?viewAsMember=true"
+			}
 		}
 	],
 	"Sponsors": [

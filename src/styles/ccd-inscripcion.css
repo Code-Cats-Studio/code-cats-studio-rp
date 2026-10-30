@@ -30,6 +30,10 @@ fieldset.ccd-field { border: 0; padding: 0; margin: 0; min-width: 0; }
 .ccd-chip { padding: 9px 16px; border: 2px solid var(--ink); border-radius: 999px; background: transparent; color: var(--ink); font: 600 14px/1 var(--f-body); cursor: pointer; transition: transform .15s ease, background-color .15s ease; }
 .ccd-chip:hover { transform: translateY(-2px); }
 .ccd-chip[aria-pressed='true'] { background: var(--blue); border-color: var(--blue); color: var(--white); }
+.ccd-section { display: grid; gap: 18px; padding-top: 18px; border-top: 2px dashed rgb(0 0 0 / .15); }
+.ccd-section__title { font: clamp(18px, 2vw, 24px)/1.2 var(--f-tech); color: var(--blue); }
+.ccd-project { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--ink); border-radius: 12px; }
+.ccd-project input { padding: 10px 12px; border: 2px solid var(--ink); border-radius: 10px; font: inherit; background: var(--white); }
 .ccd-check { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; }
 .ccd-check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--blue); }
 .ccd-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }

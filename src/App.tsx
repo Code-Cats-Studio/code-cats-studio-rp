@@ -37,8 +37,8 @@ export default function App() {
           <Route path="/:courseSlug/:sectionSlug/:lessonSlug" element={<LessonPage />} />
 
           <Route path="/code-cats-days" element={<CodeCatsDaysPage />} />
-          {/* Inscripción cerrada por ahora: vuelve al evento. Para reabrirla: element={<CodeCatsDaysInscripcionPage />} */}
-          <Route path="/code-cats-days/inscripcion" element={<Navigate to="/code-cats-days" replace />} />
+          {/* Ruta pública; ningún botón de la landing enlaza aquí todavía (la inscripción sigue sin anunciarse) */}
+          <Route path="/code-cats-days/inscripcion" element={<CodeCatsDaysInscripcionPage />} />
 
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />

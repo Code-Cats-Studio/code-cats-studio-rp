@@ -7,27 +7,57 @@ import { setPageMeta } from '../utils/seo';
 import {
   CODE_CATS_DAYS_SLUG,
   EXPERIENCE_LEVELS,
+  GOAL_OPTIONS,
   INTEREST_OPTIONS,
+  MAX_PROJECTS,
+  OPEN_TO_OPTIONS,
   PARTICIPANT_TYPES,
-  TSHIRT_SIZES,
+  SOCIAL_FIELDS,
+  TALK_ABOUT_MAX,
+  TECH_OPTIONS,
+  VISIBILITY_FIELDS,
   cancelEventRegistration,
+  emptyExtra,
   fetchEventBySlug,
   fetchMyEventRegistration,
+  parseExtra,
   registerForEvent,
   updateMyEventProfile,
+  type CatPassExtra,
   type EventInfo,
   type EventProfileInput,
   type MyEventRegistration,
 } from '../services/events';
+import { isHttpsUrl } from '../utils/validation';
 import '../styles/code-cats-days.css';
 import '../styles/ccd-inscripcion.css';
 
 const ASSETS = '/code-cats-days';
 const PATH = '/code-cats-days/inscripcion';
+// Solo en desarrollo: /code-cats-days/inscripcion?vista muestra el formulario sin sesión ni evento y sin guardar nada
+const PREVIEW = import.meta.env.DEV && new URLSearchParams(window.location.search).has('vista');
 const EMPTY: EventProfileInput = {
-  participant_type: 'attendee', organization: '', tshirt_size: '', experience_level: '', interests: [],
-  dietary_notes: '', how_found_us: '', accepts_photos: false,
+  participant_type: 'attendee', organization: '', experience_level: '', interests: [],
+  accepts_photos: false, extra: emptyExtra(),
 };
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Devuelve el primer error de los datos del Cat Pass (null = todo bien)
+function validateExtra(extra: CatPassExtra): string | null {
+  for (const { key, label } of SOCIAL_FIELDS) {
+    const url = extra.socials[key].trim();
+    if (url && !isHttpsUrl(url)) return `${label}: usa un enlace que empiece con https://`;
+  }
+  const contact = extra.business_contact.trim();
+  if (contact && !EMAIL_RE.test(contact) && !/^\+?\d{8,15}$/.test(contact.replace(/[\s-]/g, ''))) {
+    return 'Contacto de negocios: escribe un correo o un número de teléfono válido.';
+  }
+  for (const [i, p] of extra.projects.entries()) {
+    if ((p.description.trim() || p.url.trim()) && !p.name.trim()) return `Proyecto ${i + 1}: falta el nombre.`;
+    if (p.url.trim() && !isHttpsUrl(p.url)) return `Proyecto ${i + 1}: usa un enlace que empiece con https://`;
+  }
+  return null;
+}
 
 const fmt = (iso: string) =>
   new Date(iso).toLocaleString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'America/La_Paz' });
@@ -68,11 +98,9 @@ export default function CodeCatsDaysInscripcionPage() {
       if (reg?.profile) {
         setForm({
           ...reg.profile,
-          tshirt_size: reg.profile.tshirt_size ?? '',
           experience_level: reg.profile.experience_level ?? '',
           organization: reg.profile.organization ?? '',
-          dietary_notes: reg.profile.dietary_notes ?? '',
-          how_found_us: reg.profile.how_found_us ?? '',
+          extra: parseExtra(reg.profile.extra),
         });
       }
     } else {
@@ -86,8 +114,18 @@ export default function CodeCatsDaysInscripcionPage() {
   }, [authLoading, load]);
 
   const set = <K extends keyof EventProfileInput>(key: K, value: EventProfileInput[K]) => setForm((f) => ({ ...f, [key]: value }));
-  const toggleInterest = (name: string) =>
-    set('interests', form.interests.includes(name) ? form.interests.filter((i) => i !== name) : [...form.interests, name]);
+  const setExtra = <K extends keyof CatPassExtra>(key: K, value: CatPassExtra[K]) => set('extra', { ...form.extra, [key]: value });
+  const toggle = (list: string[], name: string) => (list.includes(name) ? list.filter((i) => i !== name) : [...list, name]);
+  const setProject = (index: number, field: 'name' | 'description' | 'url', value: string) =>
+    setExtra('projects', form.extra.projects.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
+
+  const chips = (options: readonly string[], selected: string[], onChange: (next: string[]) => void) => (
+    <div className="ccd-chips">
+      {options.map((name) => (
+        <button key={name} type="button" className="ccd-chip" aria-pressed={selected.includes(name)} onClick={() => onChange(toggle(selected, name))}>{name}</button>
+      ))}
+    </div>
+  );
 
   const goLogin = (to: string) => {
     rememberRedirect(PATH);
@@ -98,6 +136,15 @@ export default function CodeCatsDaysInscripcionPage() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    const invalid = validateExtra(form.extra);
+    if (invalid) {
+      setMessage({ type: 'error', text: invalid });
+      return;
+    }
+    if (PREVIEW) {
+      setMessage({ type: 'ok', text: 'Vista previa: los datos son válidos y no se guardó nada.' });
+      return;
+    }
     if (!event || !user) return;
     setBusy(true);
     setMessage(null);
@@ -149,6 +196,109 @@ export default function CodeCatsDaysInscripcionPage() {
       }, event.title)
     : '#';
 
+  const extra = form.extra;
+  const formEl = (
+    <form className="ccd-panel ccd-form" onSubmit={(e) => void submit(e)} noValidate>
+      <h2>{PREVIEW ? 'Vista previa del formulario' : active ? 'Tus datos del evento' : 'Inscríbete'}</h2>
+
+      <section className="ccd-section" aria-labelledby="ccd-sec-about">
+        <h3 id="ccd-sec-about" className="ccd-section__title">Cuéntanos sobre ti</h3>
+        <p className="ccd-note">Esto nos ayuda a crear una mejor experiencia y a conectarte con personas afines.</p>
+        <label className="ccd-field"><span>Voy a participar como</span>
+          <select value={form.participant_type} onChange={(e) => set('participant_type', e.target.value as EventProfileInput['participant_type'])}>
+            {PARTICIPANT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </label>
+        <fieldset className="ccd-field">
+          <legend>Lenguajes y tecnologías que conozco</legend>
+          {chips(TECH_OPTIONS, extra.knows, (next) => setExtra('knows', next))}
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>Quiero aprender sobre</legend>
+          {chips(TECH_OPTIONS, extra.wants_to_learn, (next) => setExtra('wants_to_learn', next))}
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>¿Qué temas te interesan?</legend>
+          {chips(INTEREST_OPTIONS, form.interests, (next) => set('interests', next))}
+        </fieldset>
+        <label className="ccd-field"><span>¿Cuál es tu experiencia programando?</span>
+          <select value={form.experience_level} onChange={(e) => set('experience_level', e.target.value as EventProfileInput['experience_level'])}>
+            <option value="">Sin elegir</option>
+            {EXPERIENCE_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
+        </label>
+        <fieldset className="ccd-field">
+          <legend>¿Qué te gustaría conseguir en el evento?</legend>
+          {chips(GOAL_OPTIONS, extra.goals, (next) => setExtra('goals', next))}
+        </fieldset>
+        <label className="ccd-field"><span>Me gustaría conversar sobre…</span>
+          <textarea rows={4} maxLength={TALK_ABOUT_MAX} value={extra.talk_about} onChange={(e) => setExtra('talk_about', e.target.value)} />
+        </label>
+      </section>
+
+      <section className="ccd-section" aria-labelledby="ccd-sec-pass">
+        <h3 id="ccd-sec-pass" className="ccd-section__title">Tu Cat Pass</h3>
+        <p className="ccd-note">Quien escanee tu QR verá solo lo que dejes marcado como visible.</p>
+        <label className="ccd-field"><span>Rol o título (ej. Estudiante de Informática)</span>
+          <input type="text" maxLength={80} value={extra.role_title} onChange={(e) => setExtra('role_title', e.target.value)} />
+        </label>
+        <label className="ccd-field"><span>Institución u organización</span>
+          <input type="text" maxLength={120} value={form.organization} onChange={(e) => set('organization', e.target.value)} />
+        </label>
+        <div className="ccd-row2">
+          {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
+            <label className="ccd-field" key={key}><span>{label}</span>
+              <input type="text" inputMode="url" maxLength={200} placeholder={placeholder} value={extra.socials[key]}
+                onChange={(e) => setExtra('socials', { ...extra.socials, [key]: e.target.value })} />
+            </label>
+          ))}
+        </div>
+        <label className="ccd-field"><span>Contacto de negocios (correo o WhatsApp)</span>
+          <input type="text" maxLength={120} value={extra.business_contact} onChange={(e) => setExtra('business_contact', e.target.value)} />
+        </label>
+        <fieldset className="ccd-field">
+          <legend>Proyectos en los que trabajo (hasta {MAX_PROJECTS})</legend>
+          {extra.projects.map((p, i) => (
+            <div className="ccd-project" key={i}>
+              <input type="text" maxLength={80} placeholder="Nombre del proyecto" aria-label={`Proyecto ${i + 1}: nombre`} value={p.name} onChange={(e) => setProject(i, 'name', e.target.value)} />
+              <input type="text" maxLength={160} placeholder="Descripción corta" aria-label={`Proyecto ${i + 1}: descripción`} value={p.description} onChange={(e) => setProject(i, 'description', e.target.value)} />
+              <input type="text" inputMode="url" maxLength={200} placeholder="https://… (opcional)" aria-label={`Proyecto ${i + 1}: enlace`} value={p.url} onChange={(e) => setProject(i, 'url', e.target.value)} />
+              <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('projects', extra.projects.filter((_, j) => j !== i))}>Quitar</button>
+            </div>
+          ))}
+          {extra.projects.length < MAX_PROJECTS && (
+            <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('projects', [...extra.projects, { name: '', description: '', url: '' }])}>+ Agregar proyecto</button>
+          )}
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>Estoy abierto/a a…</legend>
+          {chips(OPEN_TO_OPTIONS, extra.open_to, (next) => setExtra('open_to', next))}
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>Visible en mi Cat Pass</legend>
+          {VISIBILITY_FIELDS.map(({ key, label }) => (
+            <label className="ccd-check" key={key}>
+              <input type="checkbox" checked={extra.visible[key]} onChange={(e) => setExtra('visible', { ...extra.visible, [key]: e.target.checked })} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
+      </section>
+
+      <label className="ccd-check">
+        <input type="checkbox" checked={form.accepts_photos} onChange={(e) => set('accepts_photos', e.target.checked)} />
+        <span>Acepto que se tomen fotos y se usen en las comunicaciones de Code Cats Studio.</span>
+      </label>
+      <div className="ccd-actions">
+        <button type="submit" className="ccd-btn ccd-btn--blue" disabled={busy}>{busy ? 'Enviando…' : active ? 'Guardar cambios' : 'Finalizar mi perfil'}</button>
+        {editing && <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setEditing(false)}>Cancelar</button>}
+      </div>
+      <p className="ccd-note" style={{ fontSize: 13 }}>
+        Usamos estos datos solo para organizar el evento. Mira la <Link className="ccd-link" to="/privacidad">política de privacidad</Link>.
+      </p>
+    </form>
+  );
+
   return (
     <div className="ccd">
       <a className="ccd-skip" href="#contenido-inscripcion">Saltar al contenido</a>
@@ -179,13 +329,13 @@ export default function CodeCatsDaysInscripcionPage() {
                 <span>{event.location ?? 'Auditorio de Informática, UMSA'}</span>
               </p>
             )}
-            <img className="ccd-art" src={`${ASSETS}/sponsor_gato.png`} alt="" width={420} height={420} loading="lazy" />
+            <img className="ccd-art" src={`${ASSETS}/gato%20code.png`} alt="" width={420} height={420} loading="lazy" />
           </div>
 
           <div style={{ display: 'grid', gap: 20 }}>
             {message && <p role={message.type === 'error' ? 'alert' : 'status'} className={`ccd-msg${message.type === 'error' ? ' ccd-msg--error' : ''}`}>{message.text}</p>}
 
-            {loading || authLoading ? (
+            {PREVIEW ? formEl : loading || authLoading ? (
               <div className="ccd-panel"><p className="ccd-note">Cargando…</p></div>
             ) : !event ? (
               <div className="ccd-panel">
@@ -234,56 +384,7 @@ export default function CodeCatsDaysInscripcionPage() {
                 </div>
               </>
             ) : (
-              <form className="ccd-panel ccd-form" onSubmit={(e) => void submit(e)}>
-                <h2>{active ? 'Tus datos del evento' : 'Inscríbete'}</h2>
-                <label className="ccd-field"><span>Voy a participar como</span>
-                  <select value={form.participant_type} onChange={(e) => set('participant_type', e.target.value as EventProfileInput['participant_type'])}>
-                    {PARTICIPANT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                </label>
-                <label className="ccd-field"><span>Institución u organización (opcional)</span>
-                  <input type="text" maxLength={120} value={form.organization} onChange={(e) => set('organization', e.target.value)} />
-                </label>
-                <div className="ccd-row2">
-                  <label className="ccd-field"><span>Talla de polera</span>
-                    <select value={form.tshirt_size} onChange={(e) => set('tshirt_size', e.target.value as EventProfileInput['tshirt_size'])}>
-                      <option value="">Sin elegir</option>
-                      {TSHIRT_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </label>
-                  <label className="ccd-field"><span>Experiencia programando</span>
-                    <select value={form.experience_level} onChange={(e) => set('experience_level', e.target.value as EventProfileInput['experience_level'])}>
-                      <option value="">Sin elegir</option>
-                      {EXPERIENCE_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <fieldset className="ccd-field">
-                  <legend>Temas que te interesan</legend>
-                  <div className="ccd-chips">
-                    {INTEREST_OPTIONS.map((name) => (
-                      <button key={name} type="button" className="ccd-chip" aria-pressed={form.interests.includes(name)} onClick={() => toggleInterest(name)}>{name}</button>
-                    ))}
-                  </div>
-                </fieldset>
-                <label className="ccd-field"><span>Alimentación o alergias (opcional)</span>
-                  <textarea rows={2} maxLength={300} value={form.dietary_notes} onChange={(e) => set('dietary_notes', e.target.value)} />
-                </label>
-                <label className="ccd-field"><span>¿Cómo te enteraste? (opcional)</span>
-                  <input type="text" maxLength={120} value={form.how_found_us} onChange={(e) => set('how_found_us', e.target.value)} />
-                </label>
-                <label className="ccd-check">
-                  <input type="checkbox" checked={form.accepts_photos} onChange={(e) => set('accepts_photos', e.target.checked)} />
-                  <span>Acepto que se tomen fotos y se usen en las comunicaciones de Code Cats Studio.</span>
-                </label>
-                <div className="ccd-actions">
-                  <button type="submit" className="ccd-btn ccd-btn--blue" disabled={busy}>{busy ? 'Enviando…' : active ? 'Guardar cambios' : 'Inscribirme'}</button>
-                  {editing && <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setEditing(false)}>Cancelar</button>}
-                </div>
-                <p className="ccd-note" style={{ fontSize: 13 }}>
-                  Usamos estos datos solo para organizar el evento. Mira la <Link className="ccd-link" to="/privacidad">política de privacidad</Link>.
-                </p>
-              </form>
+              formEl
             )}
           </div>
         </div>
