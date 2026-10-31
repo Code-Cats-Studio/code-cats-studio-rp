@@ -26,16 +26,39 @@ export const SOCIAL_FIELDS = [
 ] as const;
 export type SocialKey = (typeof SOCIAL_FIELDS)[number]['key'];
 
-// Qué datos del Cat Pass puede ver quien escanea el QR
-export const VISIBILITY_FIELDS = [
-  { key: 'role_title', label: 'Rol o título' },
-  { key: 'organization', label: 'Institución u organización' },
-  { key: 'socials', label: 'Redes' },
-  { key: 'business_contact', label: 'Contacto de negocios' },
-  { key: 'projects', label: 'Proyectos' },
-  { key: 'open_to', label: 'Estoy abierto/a a…' },
+export const ROLE_AREAS = [
+  { value: 'frontend', label: 'Front-end' },
+  { value: 'backend', label: 'Back-end' },
+  { value: 'fullstack', label: 'Full-stack' },
+  { value: 'ui_ux', label: 'UI/UX' },
+  { value: 'mobile', label: 'Móvil' },
+  { value: 'data', label: 'Datos e IA' },
+  { value: 'devops', label: 'DevOps / Cloud' },
+  { value: 'other', label: 'Otro' },
 ] as const;
-export type VisibilityKey = (typeof VISIBILITY_FIELDS)[number]['key'];
+
+export const WORK_MODES = [
+  { value: 'remote', label: 'Remoto' },
+  { value: 'onsite', label: 'Presencial' },
+  { value: 'hybrid', label: 'Híbrido' },
+] as const;
+
+export const AVAILABILITY_OPTIONS = [
+  { value: 'immediate', label: 'Inmediata' },
+  { value: 'one_month', label: 'En 1 mes' },
+  { value: 'part_time', label: 'Medio tiempo' },
+  { value: 'internship', label: 'Pasantía o prácticas' },
+  { value: 'freelance', label: 'Freelance' },
+  { value: 'not_looking', label: 'No busco por ahora' },
+] as const;
+
+export const LANGUAGE_OPTIONS = ['Español', 'Inglés', 'Portugués', 'Francés', 'Quechua', 'Aymara'];
+export const LANGUAGE_LEVELS = [
+  { value: 'basic', label: 'Básico' },
+  { value: 'intermediate', label: 'Intermedio' },
+  { value: 'advanced', label: 'Avanzado' },
+  { value: 'native', label: 'Nativo' },
+] as const;
 
 export interface CatPassProject {
   name: string;
@@ -43,18 +66,24 @@ export interface CatPassProject {
   url: string;
 }
 
-// Campos del Cat Pass que viven en event_profiles.extra (jsonb)
+export interface CatPassLanguage {
+  name: string;
+  level: string;
+}
+
+// Campos del Cat Pass y del CV que viven en event_profiles.extra (jsonb)
 export interface CatPassExtra {
-  knows: string[];
+  knows: string[]; // stack
   wants_to_learn: string[];
   goals: string[];
-  talk_about: string;
+  role_area: string;
   role_title: string;
   socials: Record<SocialKey, string>;
   business_contact: string;
   projects: CatPassProject[];
-  open_to: string[];
-  visible: Record<VisibilityKey, boolean>;
+  work_modes: string[];
+  availability: string;
+  languages: CatPassLanguage[];
 }
 
 export interface EventProfileInput {
@@ -75,42 +104,43 @@ export interface MyEventRegistration {
 }
 
 export const MAX_PROJECTS = 3;
-export const TALK_ABOUT_MAX = 300;
+export const MAX_LANGUAGES = 4;
+export const PROJECT_DESCRIPTION_MAX = 240;
 
 export const emptyExtra = (): CatPassExtra => ({
-  knows: [], wants_to_learn: [], goals: [], talk_about: '',
-  role_title: '', socials: { linkedin: '', github: '', instagram: '', website: '' },
-  business_contact: '', projects: [], open_to: [],
-  visible: { role_title: true, organization: true, socials: true, business_contact: false, projects: true, open_to: true },
+  knows: [], wants_to_learn: [], goals: [],
+  role_area: '', role_title: '',
+  socials: { linkedin: '', github: '', instagram: '', website: '' },
+  business_contact: '', projects: [],
+  work_modes: [], availability: '', languages: [],
 });
 
 const asStrings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 const asString = (v: unknown): string => (typeof v === 'string' ? v : '');
+const asObject = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
 
 // Lo que viene de la BD no es de fiar: se normaliza a la forma esperada
 export function parseExtra(raw: unknown): CatPassExtra {
-  const base = emptyExtra();
-  if (!raw || typeof raw !== 'object') return base;
-  const r = raw as Record<string, unknown>;
-  const socials = (r.socials && typeof r.socials === 'object' ? r.socials : {}) as Record<string, unknown>;
-  const visible = (r.visible && typeof r.visible === 'object' ? r.visible : {}) as Record<string, unknown>;
-  const projects = Array.isArray(r.projects) ? r.projects : [];
+  const r = asObject(raw);
+  const socials = asObject(r.socials);
   return {
     knows: asStrings(r.knows),
     wants_to_learn: asStrings(r.wants_to_learn),
     goals: asStrings(r.goals),
-    talk_about: asString(r.talk_about),
+    role_area: asString(r.role_area),
     role_title: asString(r.role_title),
     socials: Object.fromEntries(SOCIAL_FIELDS.map(({ key }) => [key, asString(socials[key])])) as Record<SocialKey, string>,
     business_contact: asString(r.business_contact),
-    projects: projects.slice(0, MAX_PROJECTS).map((p) => {
-      const o = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>;
+    projects: (Array.isArray(r.projects) ? r.projects : []).slice(0, MAX_PROJECTS).map((p) => {
+      const o = asObject(p);
       return { name: asString(o.name), description: asString(o.description), url: asString(o.url) };
     }),
-    open_to: asStrings(r.open_to),
-    visible: Object.fromEntries(
-      VISIBILITY_FIELDS.map(({ key }) => [key, typeof visible[key] === 'boolean' ? visible[key] : base.visible[key]]),
-    ) as Record<VisibilityKey, boolean>,
+    work_modes: asStrings(r.work_modes),
+    availability: asString(r.availability),
+    languages: (Array.isArray(r.languages) ? r.languages : []).slice(0, MAX_LANGUAGES).map((l) => {
+      const o = asObject(l);
+      return { name: asString(o.name), level: asString(o.level) };
+    }),
   };
 }
 
@@ -118,14 +148,14 @@ export function parseExtra(raw: unknown): CatPassExtra {
 export function cleanExtra(extra: CatPassExtra): CatPassExtra {
   return {
     ...extra,
-    talk_about: extra.talk_about.trim().slice(0, TALK_ABOUT_MAX),
     role_title: extra.role_title.trim(),
     business_contact: extra.business_contact.trim(),
     socials: Object.fromEntries(SOCIAL_FIELDS.map(({ key }) => [key, extra.socials[key].trim()])) as Record<SocialKey, string>,
     projects: extra.projects
-      .map((p) => ({ name: p.name.trim(), description: p.description.trim(), url: p.url.trim() }))
+      .map((p) => ({ name: p.name.trim(), description: p.description.trim().slice(0, PROJECT_DESCRIPTION_MAX), url: p.url.trim() }))
       .filter((p) => p.name || p.description || p.url)
       .slice(0, MAX_PROJECTS),
+    languages: extra.languages.filter((l) => l.name && l.level).slice(0, MAX_LANGUAGES),
   };
 }
 
@@ -159,8 +189,6 @@ export const GOAL_OPTIONS = [
   'Conocer comunidades',
 ];
 
-export const OPEN_TO_OPTIONS = ['Colaborar en proyectos', 'Mentoría', 'Ofertas de trabajo', 'Freelance'];
-
 export const INTEREST_OPTIONS = [
   'Desarrollo web',
   'Móvil',
@@ -182,6 +210,21 @@ export async function fetchEventBySlug(slug: string): Promise<EventInfo | null> 
   return rows.find((r) => r.slug === slug) ?? rows[0] ?? null;
 }
 
+export interface EventSpots {
+  is_full: boolean;
+  spots_left: number | null; // null = sin límite
+}
+
+// Lugares que quedan (la BD cuenta las inscripciones; aquí solo llegan las cifras). null = evento no disponible
+export async function fetchEventSpots(eventId: string): Promise<EventSpots | null> {
+  const { data, error } = await supabase.rpc('event_spots', { p_event: eventId });
+  if (error) return null;
+  const row = (data as EventSpots[] | null)?.[0];
+  return row ?? null;
+}
+
+export const isFullError = (message: string) => /cupo lleno/i.test(message);
+
 export async function fetchMyEventRegistration(eventId: string, userId: string): Promise<MyEventRegistration | null> {
   const { data: reg } = await supabase
     .from('event_registrations')
@@ -202,14 +245,13 @@ export async function fetchMyEventRegistration(eventId: string, userId: string):
   };
 }
 
-// Devuelve 'registered' o 'waitlisted'. Lanza Error con el mensaje de la base si no se pudo.
-export async function registerForEvent(eventId: string, profile: EventProfileInput): Promise<'registered' | 'waitlisted'> {
-  const { data, error } = await supabase.rpc('register_for_event_with_profile', {
+// Lanza Error con el mensaje de la base si no se pudo (p. ej. «Cupo lleno», ver isFullError).
+export async function registerForEvent(eventId: string, profile: EventProfileInput): Promise<void> {
+  const { error } = await supabase.rpc('register_for_event_with_profile', {
     p_event: eventId,
     p_profile: { ...profile, extra: cleanExtra(profile.extra) },
   });
   if (error) throw new Error(error.message);
-  return data as 'registered' | 'waitlisted';
 }
 
 // Edita el perfil de un evento ya inscrito (la política RLS solo deja tocar el propio)

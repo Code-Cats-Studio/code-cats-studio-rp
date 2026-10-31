@@ -5,30 +5,38 @@ import { clearRedirect, rememberRedirect } from '../components/auth/PostLoginRed
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
 import { setPageMeta } from '../utils/seo';
 import {
+  AVAILABILITY_OPTIONS,
   CODE_CATS_DAYS_SLUG,
   EXPERIENCE_LEVELS,
   GOAL_OPTIONS,
   INTEREST_OPTIONS,
+  LANGUAGE_LEVELS,
+  LANGUAGE_OPTIONS,
+  MAX_LANGUAGES,
   MAX_PROJECTS,
-  OPEN_TO_OPTIONS,
   PARTICIPANT_TYPES,
+  PROJECT_DESCRIPTION_MAX,
+  ROLE_AREAS,
   SOCIAL_FIELDS,
-  TALK_ABOUT_MAX,
   TECH_OPTIONS,
-  VISIBILITY_FIELDS,
+  WORK_MODES,
   cancelEventRegistration,
   emptyExtra,
   fetchEventBySlug,
+  fetchEventSpots,
   fetchMyEventRegistration,
+  isFullError,
   parseExtra,
   registerForEvent,
   updateMyEventProfile,
   type CatPassExtra,
   type EventInfo,
   type EventProfileInput,
+  type EventSpots,
   type MyEventRegistration,
 } from '../services/events';
-import { isHttpsUrl } from '../utils/validation';
+import { updateMyFullName } from '../services/account';
+import { cleanName, isHttpsUrl, isValidName } from '../utils/validation';
 import '../styles/code-cats-days.css';
 import '../styles/ccd-inscripcion.css';
 
@@ -64,10 +72,12 @@ const fmt = (iso: string) =>
 
 export default function CodeCatsDaysInscripcionPage() {
   const navigate = useNavigate();
-  const { user, profile, isLoading: authLoading, isProfileComplete } = useAuth();
+  const { user, profile, isLoading: authLoading, isProfileComplete, refreshProfile } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [event, setEvent] = useState<EventInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [mine, setMine] = useState<MyEventRegistration | null>(null);
+  const [spots, setSpots] = useState<EventSpots | null>(null);
   const [form, setForm] = useState<EventProfileInput>(EMPTY);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,6 +93,10 @@ export default function CodeCatsDaysInscripcionPage() {
     return () => icon.remove();
   }, []);
 
+  useEffect(() => {
+    setFullName(profile?.full_name ?? '');
+  }, [profile?.full_name]);
+
   // Ya llegó a la inscripción: el destino recordado cumplió su trabajo
   useEffect(() => {
     if (!authLoading && user && isProfileComplete) clearRedirect();
@@ -92,6 +106,7 @@ export default function CodeCatsDaysInscripcionPage() {
     setLoading(true);
     const ev = await fetchEventBySlug(CODE_CATS_DAYS_SLUG);
     setEvent(ev);
+    setSpots(ev ? await fetchEventSpots(ev.id) : null);
     if (ev && user) {
       const reg = await fetchMyEventRegistration(ev.id, user.id);
       setMine(reg);
@@ -133,10 +148,12 @@ export default function CodeCatsDaysInscripcionPage() {
   };
 
   const active = mine && mine.status !== 'cancelled' ? mine : null;
+  const started = Boolean(event && new Date(event.starts_at).getTime() <= Date.now());
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const invalid = validateExtra(form.extra);
+    const nameChanged = Boolean(user) && fullName.trim() !== (profile?.full_name ?? '');
+    const invalid = (user && !isValidName(fullName) ? 'Escribe tu nombre completo (solo letras, mínimo 3 caracteres).' : null) ?? validateExtra(form.extra);
     if (invalid) {
       setMessage({ type: 'error', text: invalid });
       return;
@@ -149,22 +166,28 @@ export default function CodeCatsDaysInscripcionPage() {
     setBusy(true);
     setMessage(null);
     try {
+      if (nameChanged) {
+        await updateMyFullName(user.id, fullName.trim());
+        await refreshProfile();
+      }
       if (active) {
         await updateMyEventProfile(event.id, user.id, form);
         setMessage({ type: 'ok', text: 'Actualizamos tus datos del evento.' });
         setEditing(false);
       } else {
-        const status = await registerForEvent(event.id, form);
-        setMessage({
-          type: 'ok',
-          text: status === 'waitlisted'
-            ? 'El cupo está lleno: quedaste en lista de espera. Te avisaremos si se libera un lugar.'
-            : '¡Listo! Ya tienes tu Cat Pass. Te enviamos un correo de confirmación.',
-        });
+        await registerForEvent(event.id, form);
+        setMessage({ type: 'ok', text: '¡Listo! Ya tienes tu Cat Pass. Te enviamos un correo de confirmación.' });
       }
       await load();
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'No se pudo completar la inscripción.' });
+      const text = err instanceof Error ? err.message : 'No se pudo completar la inscripción.';
+      if (isFullError(text)) {
+        // Los últimos lugares se fueron mientras llenabas el formulario: se muestra el aviso de cupo lleno
+        setMessage(null);
+        await load();
+      } else {
+        setMessage({ type: 'error', text });
+      }
     } finally {
       setBusy(false);
     }
@@ -197,54 +220,87 @@ export default function CodeCatsDaysInscripcionPage() {
     : '#';
 
   const extra = form.extra;
+  const accountEmail = user?.email ?? profile?.email ?? '';
+  const choice = (options: readonly { value: string; label: string }[], selected: string, onChange: (next: string) => void) => (
+    <div className="ccd-chips">
+      {options.map((o) => (
+        <button key={o.value} type="button" className="ccd-chip" aria-pressed={selected === o.value} onClick={() => onChange(selected === o.value ? '' : o.value)}>{o.label}</button>
+      ))}
+    </div>
+  );
+  const setLanguage = (index: number, field: 'name' | 'level', value: string) =>
+    setExtra('languages', extra.languages.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+
   const formEl = (
     <form className="ccd-panel ccd-form" onSubmit={(e) => void submit(e)} noValidate>
-      <h2>{PREVIEW ? 'Vista previa del formulario' : active ? 'Tus datos del evento' : 'Inscríbete'}</h2>
+      <h2>{PREVIEW ? 'Vista previa del formulario' : active ? 'Tu Cat Pass' : 'Crea tu Cat Pass'}</h2>
+      <p className="ccd-note">
+        Con estos datos armamos tu Cat Pass y podrás generar tu CV en PDF para Twintro. Tu cuenta ya aporta lo demás.
+      </p>
 
-      <section className="ccd-section" aria-labelledby="ccd-sec-about">
-        <h3 id="ccd-sec-about" className="ccd-section__title">Cuéntanos sobre ti</h3>
-        <p className="ccd-note">Esto nos ayuda a crear una mejor experiencia y a conectarte con personas afines.</p>
-        <label className="ccd-field"><span>Voy a participar como</span>
-          <select value={form.participant_type} onChange={(e) => set('participant_type', e.target.value as EventProfileInput['participant_type'])}>
-            {PARTICIPANT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </label>
+      <section className="ccd-section" aria-labelledby="ccd-sec-account">
+        <h3 id="ccd-sec-account" className="ccd-section__title">Tu cuenta</h3>
+        {user ? (
+          <>
+            <div className="ccd-row2">
+              <label className="ccd-field"><span>Nombre completo</span>
+                <input type="text" maxLength={100} autoComplete="name" value={fullName} onChange={(e) => setFullName(cleanName(e.target.value))} />
+              </label>
+              <label className="ccd-field"><span>Correo</span>
+                <input type="text" value={accountEmail} readOnly aria-readonly="true" className="ccd-readonly" />
+              </label>
+            </div>
+            <p className="ccd-note">Tomamos estos datos de tu cuenta. Si el nombre no es correcto, cámbialo aquí.</p>
+          </>
+        ) : (
+          <div className="ccd-account-cta">
+            <p className="ccd-note">Tu nombre y correo salen de tu cuenta de Code Cats Studio.</p>
+            <div className="ccd-actions">
+              <button type="button" className="ccd-btn ccd-btn--blue" onClick={() => goLogin('/login')}>Iniciar sesión</button>
+              <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => goLogin('/login?modo=registro')}>Crear cuenta</button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="ccd-section" aria-labelledby="ccd-sec-pass">
+        <h3 id="ccd-sec-pass" className="ccd-section__title">Tu perfil profesional</h3>
         <fieldset className="ccd-field">
-          <legend>Lenguajes y tecnologías que conozco</legend>
-          {chips(TECH_OPTIONS, extra.knows, (next) => setExtra('knows', next))}
+          <legend>Mi rol en el área</legend>
+          {choice(ROLE_AREAS, extra.role_area, (next) => setExtra('role_area', next))}
         </fieldset>
-        <fieldset className="ccd-field">
-          <legend>Quiero aprender sobre</legend>
-          {chips(TECH_OPTIONS, extra.wants_to_learn, (next) => setExtra('wants_to_learn', next))}
-        </fieldset>
-        <fieldset className="ccd-field">
-          <legend>¿Qué temas te interesan?</legend>
-          {chips(INTEREST_OPTIONS, form.interests, (next) => set('interests', next))}
-        </fieldset>
-        <label className="ccd-field"><span>¿Cuál es tu experiencia programando?</span>
+        <div className="ccd-row2">
+          <label className="ccd-field"><span>Titular (ej. Estudiante de Informática)</span>
+            <input type="text" maxLength={80} value={extra.role_title} onChange={(e) => setExtra('role_title', e.target.value)} />
+          </label>
+          <label className="ccd-field"><span>Institución, universidad o empresa</span>
+            <input type="text" maxLength={120} value={form.organization} onChange={(e) => set('organization', e.target.value)} />
+          </label>
+        </div>
+        <label className="ccd-field"><span>Nivel de experiencia</span>
           <select value={form.experience_level} onChange={(e) => set('experience_level', e.target.value as EventProfileInput['experience_level'])}>
             <option value="">Sin elegir</option>
             {EXPERIENCE_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </label>
         <fieldset className="ccd-field">
-          <legend>¿Qué te gustaría conseguir en el evento?</legend>
-          {chips(GOAL_OPTIONS, extra.goals, (next) => setExtra('goals', next))}
+          <legend>Mi stack: lenguajes y tecnologías que conozco</legend>
+          {chips(TECH_OPTIONS, extra.knows, (next) => setExtra('knows', next))}
         </fieldset>
-        <label className="ccd-field"><span>Me gustaría conversar sobre…</span>
-          <textarea rows={4} maxLength={TALK_ABOUT_MAX} value={extra.talk_about} onChange={(e) => setExtra('talk_about', e.target.value)} />
-        </label>
-      </section>
-
-      <section className="ccd-section" aria-labelledby="ccd-sec-pass">
-        <h3 id="ccd-sec-pass" className="ccd-section__title">Tu Cat Pass</h3>
-        <p className="ccd-note">Quien escanee tu QR verá solo lo que dejes marcado como visible.</p>
-        <label className="ccd-field"><span>Rol o título (ej. Estudiante de Informática)</span>
-          <input type="text" maxLength={80} value={extra.role_title} onChange={(e) => setExtra('role_title', e.target.value)} />
-        </label>
-        <label className="ccd-field"><span>Institución u organización</span>
-          <input type="text" maxLength={120} value={form.organization} onChange={(e) => set('organization', e.target.value)} />
-        </label>
+        <fieldset className="ccd-field">
+          <legend>Proyectos (hasta {MAX_PROJECTS})</legend>
+          {extra.projects.map((p, i) => (
+            <div className="ccd-project" key={i}>
+              <input type="text" maxLength={80} placeholder="Nombre del proyecto" aria-label={`Proyecto ${i + 1}: nombre`} value={p.name} onChange={(e) => setProject(i, 'name', e.target.value)} />
+              <textarea rows={2} maxLength={PROJECT_DESCRIPTION_MAX} placeholder="¿Qué hace y qué lograste? (resultado, tecnologías, tu aporte)" aria-label={`Proyecto ${i + 1}: descripción`} value={p.description} onChange={(e) => setProject(i, 'description', e.target.value)} />
+              <input type="text" inputMode="url" maxLength={200} placeholder="https://… (repositorio o demo, opcional)" aria-label={`Proyecto ${i + 1}: enlace`} value={p.url} onChange={(e) => setProject(i, 'url', e.target.value)} />
+              <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('projects', extra.projects.filter((_, j) => j !== i))}>Quitar proyecto</button>
+            </div>
+          ))}
+          {extra.projects.length < MAX_PROJECTS && (
+            <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('projects', [...extra.projects, { name: '', description: '', url: '' }])}>+ Agregar proyecto</button>
+          )}
+        </fieldset>
         <div className="ccd-row2">
           {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
             <label className="ccd-field" key={key}><span>{label}</span>
@@ -257,31 +313,53 @@ export default function CodeCatsDaysInscripcionPage() {
           <input type="text" maxLength={120} value={extra.business_contact} onChange={(e) => setExtra('business_contact', e.target.value)} />
         </label>
         <fieldset className="ccd-field">
-          <legend>Proyectos en los que trabajo (hasta {MAX_PROJECTS})</legend>
-          {extra.projects.map((p, i) => (
-            <div className="ccd-project" key={i}>
-              <input type="text" maxLength={80} placeholder="Nombre del proyecto" aria-label={`Proyecto ${i + 1}: nombre`} value={p.name} onChange={(e) => setProject(i, 'name', e.target.value)} />
-              <input type="text" maxLength={160} placeholder="Descripción corta" aria-label={`Proyecto ${i + 1}: descripción`} value={p.description} onChange={(e) => setProject(i, 'description', e.target.value)} />
-              <input type="text" inputMode="url" maxLength={200} placeholder="https://… (opcional)" aria-label={`Proyecto ${i + 1}: enlace`} value={p.url} onChange={(e) => setProject(i, 'url', e.target.value)} />
-              <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('projects', extra.projects.filter((_, j) => j !== i))}>Quitar</button>
+          <legend>Disponibilidad</legend>
+          {choice(AVAILABILITY_OPTIONS, extra.availability, (next) => setExtra('availability', next))}
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>Modalidad de trabajo</legend>
+          <div className="ccd-chips">
+            {WORK_MODES.map((m) => (
+              <button key={m.value} type="button" className="ccd-chip" aria-pressed={extra.work_modes.includes(m.value)}
+                onClick={() => setExtra('work_modes', toggle(extra.work_modes, m.value))}>{m.label}</button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>Idiomas (hasta {MAX_LANGUAGES})</legend>
+          {extra.languages.map((l, i) => (
+            <div className="ccd-lang" key={i}>
+              <select aria-label={`Idioma ${i + 1}`} value={l.name} onChange={(e) => setLanguage(i, 'name', e.target.value)}>
+                <option value="">Idioma</option>
+                {LANGUAGE_OPTIONS.map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+              <select aria-label={`Nivel del idioma ${i + 1}`} value={l.level} onChange={(e) => setLanguage(i, 'level', e.target.value)}>
+                <option value="">Nivel</option>
+                {LANGUAGE_LEVELS.map((lv) => <option key={lv.value} value={lv.value}>{lv.label}</option>)}
+              </select>
+              <button type="button" className="ccd-btn ccd-btn--ghost" aria-label={`Quitar idioma ${i + 1}`} onClick={() => setExtra('languages', extra.languages.filter((_, j) => j !== i))}>Quitar</button>
             </div>
           ))}
-          {extra.projects.length < MAX_PROJECTS && (
-            <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('projects', [...extra.projects, { name: '', description: '', url: '' }])}>+ Agregar proyecto</button>
+          {extra.languages.length < MAX_LANGUAGES && (
+            <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setExtra('languages', [...extra.languages, { name: '', level: '' }])}>+ Agregar idioma</button>
           )}
         </fieldset>
+      </section>
+
+      <section className="ccd-section" aria-labelledby="ccd-sec-about">
+        <h3 id="ccd-sec-about" className="ccd-section__title">Tus intereses</h3>
+        <p className="ccd-note">Esto nos ayuda a crear una mejor experiencia y a conectarte con personas afines.</p>
         <fieldset className="ccd-field">
-          <legend>Estoy abierto/a a…</legend>
-          {chips(OPEN_TO_OPTIONS, extra.open_to, (next) => setExtra('open_to', next))}
+          <legend>Quiero aprender sobre</legend>
+          {chips(TECH_OPTIONS, extra.wants_to_learn, (next) => setExtra('wants_to_learn', next))}
         </fieldset>
         <fieldset className="ccd-field">
-          <legend>Visible en mi Cat Pass</legend>
-          {VISIBILITY_FIELDS.map(({ key, label }) => (
-            <label className="ccd-check" key={key}>
-              <input type="checkbox" checked={extra.visible[key]} onChange={(e) => setExtra('visible', { ...extra.visible, [key]: e.target.checked })} />
-              <span>{label}</span>
-            </label>
-          ))}
+          <legend>¿Qué temas te interesan?</legend>
+          {chips(INTEREST_OPTIONS, form.interests, (next) => set('interests', next))}
+        </fieldset>
+        <fieldset className="ccd-field">
+          <legend>¿Qué te gustaría conseguir en el evento?</legend>
+          {chips(GOAL_OPTIONS, extra.goals, (next) => setExtra('goals', next))}
         </fieldset>
       </section>
 
@@ -290,11 +368,11 @@ export default function CodeCatsDaysInscripcionPage() {
         <span>Acepto que se tomen fotos y se usen en las comunicaciones de Code Cats Studio.</span>
       </label>
       <div className="ccd-actions">
-        <button type="submit" className="ccd-btn ccd-btn--blue" disabled={busy}>{busy ? 'Enviando…' : active ? 'Guardar cambios' : 'Finalizar mi perfil'}</button>
+        <button type="submit" className="ccd-btn ccd-btn--blue" disabled={busy}>{busy ? 'Guardando…' : active ? 'Guardar cambios' : 'Finalizar mi perfil'}</button>
         {editing && <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => setEditing(false)}>Cancelar</button>}
       </div>
       <p className="ccd-note" style={{ fontSize: 13 }}>
-        Usamos estos datos solo para organizar el evento. Mira la <Link className="ccd-link" to="/privacidad">política de privacidad</Link>.
+        Usamos estos datos solo para organizar el evento y generar tu CV. Mira la <Link className="ccd-link" to="/privacidad">política de privacidad</Link>.
       </p>
     </form>
   );
@@ -343,16 +421,34 @@ export default function CodeCatsDaysInscripcionPage() {
                 <p className="ccd-note">Estamos preparando todo. Sigue nuestras redes para enterarte cuando abramos.</p>
                 <div className="ccd-actions"><Link className="ccd-btn" to="/code-cats-days">Volver al evento</Link></div>
               </div>
+            ) : !active && (spots?.is_full || started) ? (
+              <div className="ccd-panel ccd-full">
+                <img className="ccd-full__cat" src={`${ASSETS}/pronto.png`} alt="" width={112} height={112} />
+                <h2>{started && !spots?.is_full ? 'Las inscripciones cerraron' : '¡Cupo lleno!'}</h2>
+                <p className="ccd-note">
+                  {started && !spots?.is_full
+                    ? 'Code Cats Days ya comenzó y no recibimos nuevas inscripciones. Gracias por tu interés.'
+                    : 'Gracias por tantas ganas de explorar con nosotros: ya no quedan lugares para Code Cats Days. Síguenos en redes para enterarte de la próxima expedición.'}
+                </p>
+                <div className="ccd-actions">
+                  <a className="ccd-btn ccd-btn--blue" href="https://linktr.ee/code_cats_studio" target="_blank" rel="noopener noreferrer">Seguir a Code Cats</a>
+                  <Link className="ccd-btn ccd-btn--ghost" to="/code-cats-days">Volver al evento</Link>
+                  {!user && <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => goLogin('/login')}>Ya me inscribí: iniciar sesión</button>}
+                </div>
+              </div>
             ) : !user ? (
               <div className="ccd-panel">
                 <h2>Entra para inscribirte</h2>
                 <p className="ccd-note">Usa tu cuenta de Code Cats Studio (Google o correo). Si no tienes, la creas en un minuto.</p>
-                <div className="ccd-actions"><button type="button" className="ccd-btn ccd-btn--blue" onClick={() => goLogin('/login')}>Entrar o crear cuenta</button></div>
+                <div className="ccd-actions">
+                  <button type="button" className="ccd-btn ccd-btn--blue" onClick={() => goLogin('/login')}>Iniciar sesión</button>
+                  <button type="button" className="ccd-btn ccd-btn--ghost" onClick={() => goLogin('/login?modo=registro')}>Crear cuenta</button>
+                </div>
               </div>
             ) : !isProfileComplete ? (
               <div className="ccd-panel">
                 <h2>Completa tu perfil primero</h2>
-                <p className="ccd-note">Necesitamos tu nombre, documento y fecha de nacimiento una sola vez. Al terminar vuelves aquí.</p>
+                <p className="ccd-note">Solo falta tu fecha de nacimiento y aceptar los términos, una sola vez. Al terminar vuelves aquí.</p>
                 <div className="ccd-actions"><button type="button" className="ccd-btn ccd-btn--blue" onClick={() => goLogin('/perfil')}>Completar mi perfil</button></div>
               </div>
             ) : active && !editing ? (
@@ -379,8 +475,12 @@ export default function CodeCatsDaysInscripcionPage() {
                   {active.status === 'registered' && (
                     <a className="ccd-btn ccd-btn--ghost" href={calendarUrl} target="_blank" rel="noopener noreferrer">Agregar al calendario</a>
                   )}
+                  <Link className="ccd-btn ccd-btn--blue" to="/code-cats-days/cv">Generar mi CV</Link>
                   <button type="button" className="ccd-btn ccd-btn--ghost" disabled={busy} onClick={() => setEditing(true)}>Editar mis datos</button>
-                  <button type="button" className="ccd-btn ccd-btn--ghost" disabled={busy} onClick={() => void cancel()}>Cancelar inscripción</button>
+                  {/* Solo para pruebas: en el evento real nadie cancela (si no viene, no pasa nada) */}
+                  {import.meta.env.DEV && (
+                    <button type="button" className="ccd-btn ccd-btn--ghost" disabled={busy} onClick={() => void cancel()}>Cancelar inscripción (solo dev)</button>
+                  )}
                 </div>
               </>
             ) : (

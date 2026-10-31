@@ -94,6 +94,8 @@
 .ccd-pass__visual { position: relative; width: min(100%, 540px); aspect-ratio: 625 / 576; justify-self: center; }
 .ccd-pass__badge { position: absolute; left: 0; top: 0; width: 72.5%; transform-origin: 33% 4%; }
 .ccd-pass__status { position: absolute; left: 57.6%; top: 35.2%; width: 42.4%; }
+.ccd-pass__status--open { display: grid; place-items: center; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 999px; background: var(--lime, #c3fb34); color: var(--ink); font: 700 clamp(11px, 1.3vw, 15px)/1.2 var(--f-tech); text-align: center; text-transform: uppercase; }
+.ccd-pass__actions { display: flex; flex-wrap: wrap; gap: 14px; }
 @media (prefers-reduced-motion: no-preference) {
   .ccd-pass__badge { animation: ccd-sway 6s ease-in-out infinite; }
   .ccd-pass__status { animation: ccd-bob 4.5s ease-in-out infinite; }

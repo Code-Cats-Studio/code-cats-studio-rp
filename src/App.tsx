@@ -26,6 +26,7 @@ const DocentePage = lazy(() => import('./pages/DocentePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const CodeCatsDaysPage = lazy(() => import('./pages/CodeCatsDaysPage'));
 const CodeCatsDaysInscripcionPage = lazy(() => import('./pages/CodeCatsDaysInscripcionPage'));
+const CodeCatsDaysCvPage = lazy(() => import('./pages/CodeCatsDaysCvPage'));
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/code-cats-days" element={<CodeCatsDaysPage />} />
           {/* Ruta pública; ningún botón de la landing enlaza aquí todavía (la inscripción sigue sin anunciarse) */}
           <Route path="/code-cats-days/inscripcion" element={<CodeCatsDaysInscripcionPage />} />
+          <Route path="/code-cats-days/cv" element={<CodeCatsDaysCvPage />} />
 
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />

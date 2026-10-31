@@ -33,6 +33,13 @@ fieldset.ccd-field { border: 0; padding: 0; margin: 0; min-width: 0; }
 .ccd-section { display: grid; gap: 18px; padding-top: 18px; border-top: 2px dashed rgb(0 0 0 / .15); }
 .ccd-section__title { font: clamp(18px, 2vw, 24px)/1.2 var(--f-tech); color: var(--blue); }
 .ccd-project { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--ink); border-radius: 12px; }
+.ccd-readonly { background: rgb(0 0 0 / .05) !important; color: var(--muted); cursor: default; }
+.ccd-account-cta { display: grid; gap: 14px; }
+.ccd-lang { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
+.ccd-lang select { padding: 10px 12px; border: 2px solid var(--ink); border-radius: 10px; font: inherit; background: var(--white); }
+.ccd-lang .ccd-btn, .ccd-project .ccd-btn { min-height: 44px; padding: 10px 18px; justify-self: start; }
+@media (max-width: 559px) { .ccd-lang { grid-template-columns: 1fr 1fr; } .ccd-lang .ccd-btn { grid-column: 1 / -1; } }
+.ccd-project textarea { padding: 10px 12px; border: 2px solid var(--ink); border-radius: 10px; font: inherit; background: var(--white); resize: vertical; }
 .ccd-project input { padding: 10px 12px; border: 2px solid var(--ink); border-radius: 10px; font: inherit; background: var(--white); }
 .ccd-check { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; }
 .ccd-check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--blue); }
@@ -61,3 +68,5 @@ fieldset.ccd-field { border: 0; padding: 0; margin: 0; min-width: 0; }
   .ccd-pass-card { animation: ccd-pass-in .6s cubic-bezier(.2, .8, .2, 1) both; }
   @keyframes ccd-pass-in { from { opacity: 0; transform: translateY(24px) rotate(-2deg); } to { opacity: 1; transform: none; } }
 }
+.ccd-full { justify-items: start; }
+.ccd-full__cat { width: 112px; height: 112px; object-fit: contain; }

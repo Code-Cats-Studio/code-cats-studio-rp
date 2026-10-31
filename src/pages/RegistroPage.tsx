@@ -5,29 +5,21 @@ import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 import { translateProfileError } from '../utils/authErrors';
 import {
-  CI_MAX,
-  CI_MIN,
   MIN_BIRTH_DATE,
   PHONE_LENGTH,
-  cleanComplement,
   cleanName,
   isValidBirthDate,
-  isValidCI,
   isValidName,
   isValidPhone,
   onlyDigits,
   todayISO,
 } from '../utils/validation';
 import type { UserProfileUpdateInput } from '../types/auth';
-import { fetchRegions, type Region } from '../services/account';
 import TeacherApplication from '../components/account/TeacherApplication';
 import { useToast } from '../context/ToastContext';
 
 interface FormData {
   full_name: string;
-  document_number: string;
-  document_complement: string;
-  document_issued_region_id: number | '';
   birth_date: string;
   phone: string;
   institution: string;
@@ -41,9 +33,6 @@ export default function RegistroPage() {
 
   const [formData, setFormData] = useState<FormData>({
     full_name: '',
-    document_number: '',
-    document_complement: '',
-    document_issued_region_id: '',
     birth_date: '',
     phone: '',
     institution: '',
@@ -56,21 +45,13 @@ export default function RegistroPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const toast = useToast();
   const [showEditMode, setShowEditMode] = useState<boolean>(false);
-  const [regions, setRegions] = useState<Region[]>([]);
 
   const fullNameId = useId();
-  const docNumberId = useId();
-  const docComplementId = useId();
-  const regionId = useId();
   const birthDateId = useId();
   const phoneId = useId();
   const institutionId = useId();
   const degreeId = useId();
   const termsId = useId();
-
-  useEffect(() => {
-    void fetchRegions().then(setRegions);
-  }, []);
 
   useEffect(() => {
     setPageMeta(
@@ -88,9 +69,6 @@ export default function RegistroPage() {
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
           '',
-        document_number: profile?.document_number || '',
-        document_complement: profile?.document_complement || '',
-        document_issued_region_id: profile?.document_issued_region_id ?? '',
         birth_date: profile?.birth_date || '',
         phone: profile?.phone || '',
         institution: profile?.institution || '',
@@ -107,16 +85,9 @@ export default function RegistroPage() {
     if (type === 'checkbox') {
       const { checked } = e.target as HTMLInputElement;
       setFormData((prev) => ({ ...prev, [name]: checked }));
-    } else if (name === 'document_issued_region_id') {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value === '' ? '' : Number(value),
-      }));
     } else {
       const clean =
-        name === 'document_number' ? onlyDigits(value, CI_MAX)
-        : name === 'phone' ? onlyDigits(value, PHONE_LENGTH)
-        : name === 'document_complement' ? cleanComplement(value)
+        name === 'phone' ? onlyDigits(value, PHONE_LENGTH)
         : name === 'full_name' ? cleanName(value)
         : value;
       setFormData((prev) => ({ ...prev, [name]: clean }));
@@ -131,18 +102,6 @@ export default function RegistroPage() {
     // Validaciones del lado del cliente
     if (!isValidName(formData.full_name)) {
       setErrorMessage('Escribe tu nombre completo (solo letras, mínimo 3 caracteres).');
-      return;
-    }
-    if (!isValidCI(formData.document_number)) {
-      setErrorMessage(`Tu CI debe tener solo números, entre ${CI_MIN} y ${CI_MAX} dígitos.`);
-      return;
-    }
-    if (formData.document_complement && !/^\d?[A-Z]$/.test(formData.document_complement)) {
-      setErrorMessage('El complemento del CI es un dígito y una letra, por ejemplo 1A.');
-      return;
-    }
-    if (formData.document_issued_region_id === '') {
-      setErrorMessage('Por favor selecciona el departamento de emisión de tu documento.');
       return;
     }
     if (!formData.birth_date) {
@@ -167,9 +126,6 @@ export default function RegistroPage() {
     try {
       const payload: UserProfileUpdateInput = {
         full_name: formData.full_name.trim(),
-        document_number: formData.document_number.trim(),
-        document_complement: formData.document_complement.trim() || undefined,
-        document_issued_region_id: Number(formData.document_issued_region_id),
         birth_date: formData.birth_date,
         phone: formData.phone.trim() || undefined,
         institution: formData.institution.trim() || undefined,
@@ -307,14 +263,12 @@ export default function RegistroPage() {
 
   // 3. Si el perfil ya está completo y no está en modo de edición manual: se muestran los datos
   if (isProfileComplete && !showEditMode) {
-    const regionName = regions.find((r) => r.id === profile?.document_issued_region_id)?.name;
     const birth = profile?.birth_date
       ? new Date(`${profile.birth_date}T00:00:00`).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' })
       : null;
     const rows: Array<[string, string | null | undefined]> = [
       ['Nombre completo', profile?.full_name],
       ['Correo', user.email],
-      ['Cédula de identidad', profile?.document_number ? `${profile.document_number}${profile.document_complement ? ` ${profile.document_complement}` : ''}${regionName ? ` · ${regionName}` : ''}` : null],
       ['Fecha de nacimiento', birth],
       ['Teléfono / WhatsApp', profile?.phone],
       ['Universidad / Colegio', profile?.institution],
@@ -525,93 +479,6 @@ export default function RegistroPage() {
               disabled={isSubmitting}
               className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
             />
-          </div>
-
-          {/* 2, 3 y 4. Documento de Identidad (CI), Complemento y Departamento */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* CI */}
-            <div className="md:col-span-5">
-              <label
-                htmlFor={docNumberId}
-                className="block text-xs font-bold uppercase mb-1"
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Cédula de Identidad (CI) *
-              </label>
-              <input
-                id={docNumberId}
-                name="document_number"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                minLength={CI_MIN}
-                maxLength={CI_MAX}
-                required
-                placeholder="Ej: 1234567"
-                value={formData.document_number}
-                onChange={handleChange}
-                disabled={isSubmitting}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-              />
-            </div>
-
-            {/* Complemento (Opcional) */}
-            <div className="md:col-span-3">
-              <label
-                htmlFor={docComplementId}
-                className="block text-xs font-bold uppercase mb-1"
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                Compl. (Opcional)
-              </label>
-              <input
-                id={docComplementId}
-                name="document_complement"
-                type="text"
-                maxLength={3}
-                placeholder="Ej: 1A"
-                value={formData.document_complement}
-                onChange={handleChange}
-                disabled={isSubmitting}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-              />
-            </div>
-
-            {/* Departamento de Emisión */}
-            <div className="md:col-span-4">
-              <label
-                htmlFor={regionId}
-                className="block text-xs font-bold uppercase mb-1"
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Emisión (Depto.) *
-              </label>
-              <select
-                id={regionId}
-                name="document_issued_region_id"
-                required
-                value={formData.document_issued_region_id}
-                onChange={handleChange}
-                disabled={isSubmitting}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-              >
-                <option value="">Selecciona...</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {/* 5 y 6. Fecha de Nacimiento y Teléfono */}

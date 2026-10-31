@@ -27,7 +27,7 @@ const TITLES: Record<Mode, string> = {
 
 export default function LoginPage() {
   const { user, isLoading, isProfileComplete, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(() => (new URLSearchParams(window.location.search).get('modo') === 'registro' ? 'signup' : 'login'));
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

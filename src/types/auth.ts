@@ -26,9 +26,6 @@ export interface UserProfile {
 
 export interface UserProfileUpdateInput {
   full_name: string;
-  document_number: string;
-  document_complement?: string;
-  document_issued_region_id: number;
   birth_date: string;
   phone?: string;
   institution?: string;

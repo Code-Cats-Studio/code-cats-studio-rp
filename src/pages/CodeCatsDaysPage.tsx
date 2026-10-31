@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import EventMotion from '../components/event/EventMotion';
 import { setPageMeta } from '../utils/seo';
 import redes from '../utils/redes.json';
+import { CODE_CATS_DAYS_SLUG, fetchEventBySlug, fetchEventSpots } from '../services/events';
 import '../styles/code-cats-days.css';
 
 const ASSETS = '/code-cats-days';
@@ -136,6 +137,16 @@ function Band() {
 
 export default function CodeCatsDaysPage() {
   const [active, setActive] = useState<string>('inicio');
+  const [full, setFull] = useState(false);
+  // El aviso de cupo lleno sale de la BD (solo cifras públicas), no de la página
+  useEffect(() => {
+    let cancelled = false;
+    void fetchEventBySlug(CODE_CATS_DAYS_SLUG)
+      .then((ev) => (ev ? fetchEventSpots(ev.id) : null))
+      .then((spots) => { if (!cancelled) setFull(Boolean(spots?.is_full)); });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => { if (entry.isIntersecting) setActive(entry.target.id); });
@@ -175,7 +186,7 @@ export default function CodeCatsDaysPage() {
               <p className="ccd-hero__date"><time dateTime="2026-11-07T10:00:00-04:00">Sábado 7 de noviembre, 10:00</time><span>Auditorio de Informática, UMSA</span></p>
               <h1 className="ccd-hero__logo"><img src={`${ASSETS}/logo_hero.png`} width={561} height={446} fetchPriority="high" alt="Code Cats Days 2026, Expedition 01" /></h1>
               <p className="ccd-text ccd-hero__desc">Explora tecnología, crea proyectos reales y conecta con la comunidad. Tu expedición empieza aquí.</p>
-              <span className="ccd-btn ccd-hero__cta" role="button" aria-disabled="true" style={{ opacity: 0.6, cursor: 'not-allowed' }}>Próximamente</span>
+              <Link className="ccd-btn ccd-hero__cta" to="/code-cats-days/inscripcion">{full ? 'Cupo lleno' : 'Inscríbete gratis'}</Link>
             </div>
             <div className="ccd-hero__visual">
               <div className="ccd-hero__cat-entry"><img className="ccd-hero__cat" src={`${ASSETS}/portada_hero_gato.png`} width={645} height={451} fetchPriority="high" alt="" /></div>
@@ -190,13 +201,20 @@ export default function CodeCatsDaysPage() {
           <div className="ccd-container ccd-pass__grid">
             <div className="ccd-pass__copy" data-reveal>
               <p className="ccd-pass__kicker">Tu próxima aventura tech</p>
-              <h2 id="cat-pass-title" className="ccd-pass__title">Está por comenzar</h2>
-              <p className="ccd-text">Estamos preparando todo para tu llegada. Muy pronto podrás conseguir tu <strong>CAT PASS</strong> y ser parte de esta expedición completamente <strong>GRATUITO</strong>.</p>
-              <a className="ccd-btn ccd-btn--arrow" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer">Mantenme al tanto <span aria-hidden="true">↗</span></a>
+              <h2 id="cat-pass-title" className="ccd-pass__title">{full ? '¡Cupo lleno!' : 'Ya puedes inscribirte'}</h2>
+              <p className="ccd-text">
+                {full
+                  ? <>Gracias por tantas ganas de explorar: ya no quedan lugares para esta expedición. Si ya te inscribiste, entra a tu <strong>CAT PASS</strong>; y síguenos para la próxima.</>
+                  : <>Consigue tu <strong>CAT PASS</strong>, arma tu perfil y genera tu CV en PDF. La expedición es completamente <strong>GRATUITA</strong>.</>}
+              </p>
+              <div className="ccd-pass__actions">
+                <Link className="ccd-btn" to="/code-cats-days/inscripcion">{full ? 'Ver mi Cat Pass' : 'Conseguir mi Cat Pass'}</Link>
+                <a className="ccd-btn ccd-btn--arrow" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer">Más información <span aria-hidden="true">↗</span></a>
+              </div>
             </div>
             <div className="ccd-pass__visual" data-cat-reveal>
               <img className="ccd-pass__badge" src={`${ASSETS}/credencial.png`} width={453} height={576} loading="lazy" alt="Credencial Cat Pass de Code Cats Days 2026, Expedition 01" />
-              <img className="ccd-pass__status" src={`${ASSETS}/estado.png`} width={265} height={55} loading="lazy" alt="Estado: próximamente" />
+              <span className="ccd-pass__status ccd-pass__status--open">{full ? 'Cupo lleno' : 'Inscripciones abiertas'}</span>
             </div>
           </div>
         </section>

@@ -7,6 +7,12 @@ export interface Region {
   name: string;
 }
 
+// Cambia solo el nombre del perfil (la RLS deja editar únicamente el propio)
+export async function updateMyFullName(userId: string, fullName: string): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ full_name: fullName }).eq('id', userId);
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchRegions(): Promise<Region[]> {
   const { data, error } = await supabase.from('regions').select('id,name').order('name');
   if (error || !data) return [];

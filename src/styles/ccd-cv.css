@@ -1,0 +1,33 @@
+/* CV en PDF: una columna, tipografía de sistema y sin imágenes (compatible con ATS) */
+.cv-main { min-height: 100svh; padding-block: 32px 64px; }
+.cv-hint { max-width: 60ch; margin-top: 12px; }
+.cv-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 24px; }
+
+.cv-sheet {
+  max-width: 794px; /* A4 a 96 dpi */
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 56px);
+  background: #fff;
+  color: #111;
+  border: 1px solid var(--ink);
+  box-shadow: 8px 8px 0 rgb(65 66 244 / .18);
+  font: 14px/1.5 Georgia, 'Times New Roman', serif;
+}
+.cv-sheet h1 { margin: 0; font: 700 28px/1.2 Georgia, 'Times New Roman', serif; letter-spacing: .02em; text-align: center; text-transform: uppercase; color: #111; }
+.cv-head { text-align: center; padding-bottom: 12px; border-bottom: 1.5px solid #111; margin-bottom: 4px; }
+.cv-headline { margin: 6px 0 0; font-weight: 700; }
+.cv-line { margin: 4px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.cv-sheet section { margin-top: 16px; }
+.cv-sheet h2 { margin: 0 0 6px; padding-bottom: 2px; border-bottom: 1px solid #111; font: 700 13px/1.4 Georgia, 'Times New Roman', serif; letter-spacing: .08em; text-transform: uppercase; color: #111; }
+.cv-sheet p { margin: 0; overflow-wrap: anywhere; }
+.cv-item + .cv-item { margin-top: 8px; }
+
+@page { size: A4; margin: 14mm; }
+@media print {
+  .cv-no-print { display: none !important; }
+  html, body, .ccd, .cv-main { background: #fff !important; }
+  .cv-main { padding: 0; min-height: 0; }
+  .ccd-container { max-width: none; padding: 0; }
+  .ccd-tex::before, .ccd-tex::after { display: none !important; }
+  .cv-sheet { max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; }
+}
