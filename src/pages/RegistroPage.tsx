@@ -46,6 +46,7 @@ export default function RegistroPage() {
   const toast = useToast();
   const [showEditMode, setShowEditMode] = useState<boolean>(false);
 
+  const emailId = useId();
   const fullNameId = useId();
   const birthDateId = useId();
   const phoneId = useId();
@@ -268,7 +269,7 @@ export default function RegistroPage() {
       : null;
     const rows: Array<[string, string | null | undefined]> = [
       ['Nombre completo', profile?.full_name],
-      ['Correo', user.email],
+      ['Correo', user.email || profile?.email],
       ['Fecha de nacimiento', birth],
       ['Teléfono / WhatsApp', profile?.phone],
       ['Universidad / Colegio', profile?.institution],
@@ -434,17 +435,19 @@ export default function RegistroPage() {
           {/* Correo (de solo lectura proveniente de Google) */}
           <div>
             <label
+              htmlFor={emailId}
               className="block text-xs font-bold uppercase mb-1"
               style={{
                 fontFamily: 'var(--font-heading)',
                 color: 'var(--text-muted)',
               }}
             >
-              Correo Electrónico (Google)
+              Correo electrónico
             </label>
             <input
+              id={emailId}
               type="text"
-              value={user.email || ''}
+              value={user.email || profile?.email || ''}
               disabled
               className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-gray-100 text-gray-500 border border-gray-300 cursor-not-allowed"
             />

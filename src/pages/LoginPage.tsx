@@ -7,7 +7,34 @@ import { retryAfterSeconds, translateAuthError } from '../utils/authErrors';
 import { cleanName } from '../utils/validation';
 import { useToast } from '../context/ToastContext';
 
-type Mode = 'login' | 'signup' | 'reset';
+type Mode = 'login' | 'signup' | 'reset' | 'verify';
+
+// Segundos que se espera entre un envío de correo de confirmación y el siguiente. El correo puede tardar
+// hasta 2 minutos en llegar; esperar evita que se pidan muchos seguidos y se agote el límite de envíos.
+const RESEND_SECONDS = 120;
+const SENT_KEY = 'verify-email-sent-at';
+
+// Recuerda cuándo se envió el último correo a esa dirección, para que la espera siga aunque se recargue la página
+function markSent(email: string) {
+  try {
+    const sent = JSON.parse(localStorage.getItem(SENT_KEY) || '{}');
+    sent[email.trim().toLowerCase()] = Date.now();
+    localStorage.setItem(SENT_KEY, JSON.stringify(sent));
+  } catch {
+    // sin almacenamiento local: la espera solo vale mientras la página siga abierta
+  }
+}
+
+function secondsLeft(email: string): number {
+  try {
+    const at = JSON.parse(localStorage.getItem(SENT_KEY) || '{}')[email.trim().toLowerCase()];
+    return at ? Math.max(0, Math.ceil(RESEND_SECONDS - (Date.now() - at) / 1000)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 const input: CSSProperties = {
   width: '100%',
@@ -23,10 +50,11 @@ const TITLES: Record<Mode, string> = {
   login: 'Bienvenido a Code Cats',
   signup: 'Crea tu cuenta',
   reset: 'Recupera tu contraseña',
+  verify: 'Verifica tu correo',
 };
 
 export default function LoginPage() {
-  const { user, isLoading, isProfileComplete, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
+  const { user, isLoading, isProfileComplete, signInWithGoogle, signInWithEmail, signUpWithEmail, resendConfirmation, resetPassword } = useAuth();
   const [mode, setMode] = useState<Mode>(() => (new URLSearchParams(window.location.search).get('modo') === 'registro' ? 'signup' : 'login'));
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -64,6 +92,30 @@ export default function LoginPage() {
     if (error) { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
   };
 
+  // Reenvía el correo de confirmación (pantalla "Verifica tu correo")
+  const handleResend = async () => {
+    setErrorMessage(null);
+    setInfoMessage(null);
+    setBusy(true);
+    try {
+      const { error } = await resendConfirmation(email);
+      if (error) {
+        const text = translateAuthError(error.message);
+        setErrorMessage(text);
+        toast.error(text);
+        setCooldown(retryAfterSeconds(error.message) ?? RESEND_SECONDS);
+      } else {
+        const text = `Reenviamos el correo a ${email.trim()}. Puede tardar hasta 2 minutos; revisa también spam y promociones.`;
+        setInfoMessage(text);
+        toast.info(text);
+        markSent(email);
+        setCooldown(RESEND_SECONDS);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -73,7 +125,13 @@ export default function LoginPage() {
       if (mode === 'login') {
         const { error } = await signInWithEmail(email, password);
         if (error) {
-          { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
+          // Cuenta creada pero con el correo sin confirmar: se lleva a la pantalla para verificarlo y reenviarlo
+          if (/not confirmed/i.test(error.message)) {
+            setMode('verify');
+            setCooldown(secondsLeft(email));
+          } else {
+            { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
+          }
         }
       } else if (mode === 'signup') {
         if (fullName.trim().length < 3) {
@@ -89,8 +147,10 @@ export default function LoginPage() {
           { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
           setCooldown(retryAfterSeconds(error.message) ?? 0);
         } else if (needsConfirmation) {
-          { setInfoMessage('Te enviamos un correo para confirmar tu cuenta. Ábrelo y pulsa el enlace; luego inicia sesión.'); toast.info('Te enviamos un correo para confirmar tu cuenta. Ábrelo y pulsa el enlace; luego inicia sesión.'); }
-          setMode('login');
+          // El correo ya salió: se muestra la pantalla de verificación y el reenvío queda en espera
+          markSent(email);
+          setMode('verify');
+          setCooldown(RESEND_SECONDS);
         }
       } else {
         const { error } = await resetPassword(email);
@@ -123,7 +183,9 @@ export default function LoginPage() {
           {TITLES[mode]}
         </h1>
         <p className="mt-2 mb-6" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-          Una sola cuenta para tomar cursos y participar en nuestros eventos.
+          {mode === 'verify'
+            ? <>Te enviamos un enlace a <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong> para activar tu cuenta.</>
+            : 'Una sola cuenta para tomar cursos y participar en nuestros eventos.'}
         </p>
 
         {errorMessage && (
@@ -133,7 +195,44 @@ export default function LoginPage() {
           <p role="status" className="mb-4 text-sm" style={{ color: 'var(--text-primary)' }}>{infoMessage}</p>
         )}
 
-        {mode !== 'reset' && (
+        {mode === 'verify' && (
+          <div className="grid gap-4 text-left" data-testid="verify-email">
+            <ol className="grid gap-2 text-sm pl-5 list-decimal" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
+              <li>Abre tu correo (revisa también <strong>spam</strong> y <strong>promociones</strong>).</li>
+              <li>Pulsa el enlace para confirmar tu cuenta.</li>
+              <li>Vuelve aquí e inicia sesión. Si el enlace abrió otro navegador, no pasa nada: entra con tu correo y contraseña.</li>
+            </ol>
+            <p className="text-sm p-3 rounded-xl" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
+              El correo puede tardar <strong>hasta 2 minutos</strong> en llegar. Espera antes de pedir otro: si pides muchos seguidos, los envíos se bloquean por un rato.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setErrorMessage(null); setInfoMessage(null); setPassword(''); setMode('login'); }}
+              className="w-full px-4 py-3 rounded-xl font-semibold cursor-pointer"
+              style={{ fontFamily: 'var(--font-heading)', background: 'var(--azul-gatuno)', color: '#fff', border: 'none' }}
+            >
+              Ya lo confirmé: iniciar sesión
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleResend()}
+              disabled={busy || cooldown > 0}
+              className="w-full px-4 py-3 rounded-xl font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ fontFamily: 'var(--font-heading)', border: '1.5px solid var(--azul-gatuno)', color: 'var(--azul-gatuno)', background: 'transparent' }}
+            >
+              {busy ? 'Un momento…' : cooldown > 0 ? `Reenviar correo en ${clock(cooldown)}` : 'Reenviar correo'}
+            </button>
+            <button
+              type="button"
+              style={{ ...link, textAlign: 'center', fontSize: '0.875rem' }}
+              onClick={() => { setErrorMessage(null); setInfoMessage(null); setEmail(''); setPassword(''); setCooldown(0); setMode('signup'); }}
+            >
+              Me equivoqué de correo
+            </button>
+          </div>
+        )}
+
+        {mode !== 'reset' && mode !== 'verify' && (
           <>
             <button
               type="button"
@@ -148,6 +247,7 @@ export default function LoginPage() {
           </>
         )}
 
+        {mode !== 'verify' && (
         <form onSubmit={(e) => void handleSubmit(e)} className="grid gap-3 text-left">
           {mode === 'signup' && (
             <label className="grid gap-1 text-sm">
@@ -179,6 +279,7 @@ export default function LoginPage() {
                 : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Crear cuenta' : 'Enviar enlace'}
           </button>
         </form>
+        )}
 
         <div className="mt-4 text-sm grid gap-1" style={{ color: 'var(--text-secondary)' }}>
           {mode === 'login' && (
@@ -187,7 +288,7 @@ export default function LoginPage() {
               <button type="button" style={link} onClick={() => switchMode('reset')}>Olvidé mi contraseña</button>
             </>
           )}
-          {mode !== 'login' && (
+          {mode !== 'login' && mode !== 'verify' && (
             <button type="button" style={link} onClick={() => switchMode('login')}>Volver a iniciar sesión</button>
           )}
         </div>

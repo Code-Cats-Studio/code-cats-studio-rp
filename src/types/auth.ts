@@ -48,6 +48,8 @@ export interface AuthContextType {
     password: string,
     fullName: string
   ) => Promise<{ error: Error | null; needsConfirmation: boolean }>;
+  // Reenvía el correo de confirmación de una cuenta con correo y contraseña
+  resendConfirmation: (email: string) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;

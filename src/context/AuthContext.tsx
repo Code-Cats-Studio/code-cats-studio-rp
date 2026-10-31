@@ -146,11 +146,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
         },
       });
       if (error) return { error: new Error(error.message), needsConfirmation: false };
+      // Con un correo que ya tiene cuenta, Supabase no da error ni envía correo: responde un usuario sin identidades
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return { error: new Error('User already registered'), needsConfirmation: false };
+      }
       // Sin sesión inmediata = hay que confirmar el correo
       return { error: null, needsConfirmation: !data.session };
     },
     []
   );
+
+  // Vuelve a enviar el correo de confirmación de una cuenta creada con correo y contraseña
+  const resendConfirmation = useCallback(async (email: string): Promise<{ error: Error | null }> => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    return { error: error ? new Error(error.message) : null };
+  }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<{ error: Error | null }> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
@@ -252,6 +266,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
+    resendConfirmation,
     resetPassword,
     signOut,
     refreshProfile,

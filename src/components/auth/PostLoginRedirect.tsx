@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const KEY = 'post-login-redirect';
@@ -31,21 +31,33 @@ export function peekRedirect(): string | null {
 }
 
 // Al detectar la sesión, lleva a la persona a la página que pidió y olvida el destino.
+// Solo actúa UNA vez por inicio de sesión: antes se volvía a ejecutar en cada cambio de ruta y, como
+// "Completar mi perfil" guarda la inscripción como destino y navega a /perfil, la devolvía a la inscripción
+// al instante (la persona veía que el botón "solo recarga la página" y nunca podía completar su perfil).
 export default function PostLoginRedirect() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // Id de la persona cuyo destino ya se revisó
+  const handledFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isLoading || !user) return;
+    if (isLoading) return;
+    if (!user) {
+      handledFor.current = null;
+      return;
+    }
+    if (handledFor.current === user.id) return;
+    handledFor.current = user.id;
+
+    // Quien abre /perfil se queda ahí para completar sus datos; el destino se conserva para el botón "Continuar"
+    if (pathname === '/perfil') return;
+
     const path = peekRedirect();
     if (!path) return;
-    try {
-      localStorage.removeItem(KEY);
-    } catch {
-      // nada que limpiar
-    }
+    clearRedirect();
     navigate(path, { replace: true });
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, pathname, navigate]);
 
   return null;
 }
