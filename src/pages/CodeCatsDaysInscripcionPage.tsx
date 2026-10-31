@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import EventAccount from '../components/event/EventAccount';
 import { clearRedirect, rememberRedirect } from '../components/auth/PostLoginRedirect';
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
 import { setPageMeta } from '../utils/seo';
@@ -389,6 +390,7 @@ export default function CodeCatsDaysInscripcionPage() {
             <Link className="ccd-nav__link" to="/code-cats-days">El evento</Link>
             <Link className="ccd-nav__link" to={PATH} aria-current="page">Mi inscripción</Link>
           </nav>
+          <EventAccount />
         </div>
       </header>
 

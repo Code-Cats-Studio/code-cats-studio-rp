@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import EventMotion from '../components/event/EventMotion';
+import EventAccount from '../components/event/EventAccount';
 import { setPageMeta } from '../utils/seo';
 import redes from '../utils/redes.json';
 import { CODE_CATS_DAYS_SLUG, fetchEventBySlug, fetchEventSpots } from '../services/events';
@@ -176,6 +177,7 @@ export default function CodeCatsDaysPage() {
           <nav className="ccd-nav__links" aria-label="Secciones">
             {NAV_LINKS.map((link) => <a key={link.id} className="ccd-nav__link" href={`#${link.id}`} aria-current={active === link.id ? 'location' : undefined}>{link.label}</a>)}
           </nav>
+          <EventAccount />
         </div>
       </header>
 
