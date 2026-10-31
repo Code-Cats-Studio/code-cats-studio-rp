@@ -1,4 +1,4 @@
-// Ejecutar: node --experimental-strip-types --test tests/
+﻿// Ejecutar: node --experimental-strip-types --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as v from '../src/utils/validation.ts';
@@ -16,11 +16,30 @@ test('onlyDigits recorta y limpia', () => {
   assert.equal(v.onlyDigits('abc'), '');
 });
 
-test('CI: 5 a 10 dígitos', () => {
+test('CI: 5 a 10 dígitos y espacios', () => {
   assert.equal(v.isValidCI('1234'), false);
   assert.equal(v.isValidCI('12345'), true);
+  assert.equal(v.isValidCI('  12345  '), true);
   assert.equal(v.isValidCI('12345678901'), false);
   assert.equal(v.isValidCI('12a45'), false);
+});
+
+test('complemento CI: limpieza y formato', () => {
+  assert.equal(v.cleanComplement('1a'), '1A');
+  assert.equal(v.cleanComplement('1-a#'), '1A');
+  assert.equal(v.cleanComplement(''), '');
+  assert.equal(v.isValidComplement(''), true);
+  assert.equal(v.isValidComplement('1A'), true);
+  assert.equal(v.isValidComplement('LP1'), true);
+  assert.equal(v.isValidComplement('1A-B'), false);
+});
+
+test('fecha nacimiento: rango válido (mínimo 5 años, no futura)', () => {
+  assert.equal(v.isValidBirthDate('2000-05-15'), true);
+  assert.equal(v.isValidBirthDate('1990-12-31'), true);
+  assert.equal(v.isValidBirthDate('1910-01-01'), false);
+  assert.equal(v.isValidBirthDate('2099-01-01'), false);
+  assert.equal(v.isValidBirthDate(v.todayISO()), false);
 });
 
 test('duración: parseo de etiquetas existentes', () => {

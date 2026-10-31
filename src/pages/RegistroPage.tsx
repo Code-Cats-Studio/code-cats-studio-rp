@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, type FormEvent } from 'react';
+﻿import { useState, useEffect, useId, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { peekRedirect } from '../components/auth/PostLoginRedirect';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,8 @@ import { translateProfileError } from '../utils/authErrors';
 import {
   MIN_BIRTH_DATE,
   PHONE_LENGTH,
+  MIN_STUDENT_AGE_YEARS,
+  getMaxBirthDate,
   cleanName,
   isValidBirthDate,
   isValidName,
@@ -97,6 +99,7 @@ export default function RegistroPage() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -110,7 +113,7 @@ export default function RegistroPage() {
       return;
     }
     if (!isValidBirthDate(formData.birth_date)) {
-      setErrorMessage('La fecha de nacimiento no es válida.');
+      setErrorMessage("La fecha de nacimiento no es válida (debes tener al menos $MIN_STUDENT_AGE_YEARS años y no puede ser futura).");
       return;
     }
     if (formData.phone && !isValidPhone(formData.phone)) {
@@ -432,7 +435,7 @@ export default function RegistroPage() {
             border: '1.5px solid var(--border)',
           }}
         >
-          {/* Correo (de solo lectura proveniente de Google) */}
+          {/* Correo (de solo lectura — vinculado al método de acceso del alumno) */}
           <div>
             <label
               htmlFor={emailId}
@@ -442,7 +445,7 @@ export default function RegistroPage() {
                 color: 'var(--text-muted)',
               }}
             >
-              Correo electrónico
+              Correo electrónico registrado
             </label>
             <input
               id={emailId}
@@ -502,7 +505,7 @@ export default function RegistroPage() {
                 name="birth_date"
                 type="date"
                 min={MIN_BIRTH_DATE}
-                max={todayISO()}
+                max={getMaxBirthDate()}
                 required
                 value={formData.birth_date}
                 onChange={handleChange}

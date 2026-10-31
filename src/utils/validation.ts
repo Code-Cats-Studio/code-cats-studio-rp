@@ -9,16 +9,25 @@ export const onlyDigits = (value: string, max?: number) => {
 export const cleanName = (value: string) =>
   value.replace(/[^\p{L}\s'.-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 100);
 
-// Complemento del CI: dígito y letra, p. ej. 1A
+// Complemento del CI: dígito y letra, p. ej. 1A (en Bolivia hasta 3 caracteres alfanuméricos)
 export const cleanComplement = (value: string) => value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase().slice(0, 3);
+
+export const isValidComplement = (value?: string | null) => {
+  if (!value || value.trim() === '') return true; // Es opcional
+  return /^[0-9A-Z]{1,3}$/i.test(value.trim());
+};
 
 export const CI_MIN = 5;
 export const CI_MAX = 10;
 export const PHONE_LENGTH = 8;
 
-export const isValidCI = (value: string) => /^\d+$/.test(value) && value.length >= CI_MIN && value.length <= CI_MAX;
-export const isValidPhone = (value: string) => new RegExp(`^\\d{${PHONE_LENGTH}}$`).test(value);
-export const isValidName = (value: string) => value.trim().length >= 3 && /\p{L}/u.test(value);
+export const isValidCI = (value: string) => {
+  const trimmed = (value || '').trim();
+  return /^\d+$/.test(trimmed) && trimmed.length >= CI_MIN && trimmed.length <= CI_MAX;
+};
+
+export const isValidPhone = (value: string) => new RegExp(`^\\d{${PHONE_LENGTH}}$`).test((value || '').trim());
+export const isValidName = (value: string) => (value || '').trim().length >= 3 && /\p{L}/u.test(value);
 
 export const isHttpsUrl = (value: string) => {
   try {
@@ -36,7 +45,21 @@ export const clampInt = (value: string | number, min: number, max: number, fallb
 
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 export const MIN_BIRTH_DATE = '1920-01-01';
-export const isValidBirthDate = (value: string) => value >= MIN_BIRTH_DATE && value <= todayISO();
+
+// Edad mínima requerida para registrarse en la plataforma (5 años)
+export const MIN_STUDENT_AGE_YEARS = 5;
+
+export const getMaxBirthDate = (minAgeYears = MIN_STUDENT_AGE_YEARS) => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - minAgeYears);
+  return d.toISOString().slice(0, 10);
+};
+
+export const isValidBirthDate = (value: string, minAgeYears = MIN_STUDENT_AGE_YEARS) => {
+  if (!value || typeof value !== 'string') return false;
+  const maxDate = getMaxBirthDate(minAgeYears);
+  return value >= MIN_BIRTH_DATE && value <= maxDate;
+};
 
 // ─── Duraciones ("1h 20min") ────────────────────────────────────────────────
 export const MAX_LESSON_HOURS = 5;

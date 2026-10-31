@@ -87,13 +87,24 @@ export default function LoginPage() {
   };
 
   const handleGoogle = async () => {
+    if (busy || isLoading) return;
     setErrorMessage(null);
-    const { error } = await signInWithGoogle();
-    if (error) { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
+    setBusy(true);
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        const text = translateAuthError(error.message);
+        setErrorMessage(text);
+        toast.error(text);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   // Reenvía el correo de confirmación (pantalla "Verifica tu correo")
   const handleResend = async () => {
+    if (busy || cooldown > 0) return;
     setErrorMessage(null);
     setInfoMessage(null);
     setBusy(true);
@@ -118,47 +129,67 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setErrorMessage(null);
     setInfoMessage(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage('Ingresa un correo electrónico válido.');
+      return;
+    }
+
+    // Validaciones del lado del cliente antes de bloquear el botón con busy
+    if (mode === 'signup') {
+      if (fullName.trim().length < 3) {
+        setErrorMessage('Escribe tu nombre completo (mínimo 3 caracteres).');
+        return;
+      }
+      if (password.length < 8) {
+        setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
+        return;
+      }
+    }
+
     setBusy(true);
     try {
       if (mode === 'login') {
-        const { error } = await signInWithEmail(email, password);
+        const { error } = await signInWithEmail(trimmedEmail, password);
         if (error) {
           // Cuenta creada pero con el correo sin confirmar: se lleva a la pantalla para verificarlo y reenviarlo
           if (/not confirmed/i.test(error.message)) {
             setMode('verify');
-            setCooldown(secondsLeft(email));
+            setCooldown(secondsLeft(trimmedEmail));
           } else {
-            { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
+            const text = translateAuthError(error.message);
+            setErrorMessage(text);
+            toast.error(text);
           }
         }
       } else if (mode === 'signup') {
-        if (fullName.trim().length < 3) {
-          setErrorMessage('Escribe tu nombre completo.');
-          return;
-        }
-        if (password.length < 8) {
-          setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
-          return;
-        }
-        const { error, needsConfirmation } = await signUpWithEmail(email, password, fullName);
+        const { error, needsConfirmation } = await signUpWithEmail(trimmedEmail, password, fullName.trim());
         if (error) {
-          { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
+          const text = translateAuthError(error.message);
+          setErrorMessage(text);
+          toast.error(text);
           setCooldown(retryAfterSeconds(error.message) ?? 0);
         } else if (needsConfirmation) {
           // El correo ya salió: se muestra la pantalla de verificación y el reenvío queda en espera
-          markSent(email);
+          markSent(trimmedEmail);
           setMode('verify');
           setCooldown(RESEND_SECONDS);
         }
       } else {
-        const { error } = await resetPassword(email);
+        const { error } = await resetPassword(trimmedEmail);
         if (error) {
-          { setErrorMessage(translateAuthError(error.message)); toast.error(translateAuthError(error.message)); }
+          const text = translateAuthError(error.message);
+          setErrorMessage(text);
+          toast.error(text);
           setCooldown(retryAfterSeconds(error.message) ?? 60);
         } else {
-          { setInfoMessage('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.'); toast.info('Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.'); }
+          const text = 'Si el correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también spam.';
+          setInfoMessage(text);
+          toast.info(text);
           setCooldown(60);
         }
       }
@@ -237,7 +268,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => void handleGoogle()}
-              disabled={isLoading}
+              disabled={isLoading || busy}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold cursor-pointer disabled:opacity-60"
               style={{ fontFamily: 'var(--font-heading)', background: 'var(--azul-gatuno)', color: '#fff' }}
             >
