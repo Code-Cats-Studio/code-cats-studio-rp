@@ -163,3 +163,14 @@
   .lp *, .lp *::before, .lp *::after { animation: none !important; transition-duration: 0.01ms !important; }
   .lp-reveal { opacity: 1; transform: none; }
 }
+
+/* Franja del evento (primera sección): colores de Code Cats Days */
+.lp-event { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; padding: 12px 20px; background: #f6e6d3; color: #14123a; border-bottom: 3px solid #4142f4; }
+.lp-event__cat { border-radius: 50%; background: #fff; }
+.lp-event__copy { display: grid; gap: 2px; min-width: 0; text-align: left; font-size: 14px; }
+.lp-event__copy strong { font-size: 15px; }
+.lp-event__cta { padding: 9px 18px; border-radius: 999px; background: #4142f4; color: #fff; font-weight: 700; font-size: 14px; text-decoration: none; transition: transform 0.2s; }
+.lp-event__cta:hover { transform: translateY(-2px); }
+.lp-event__more { color: #4142f4; font-weight: 600; font-size: 14px; text-decoration: underline; }
+.lp-event a:focus-visible { outline: 3px solid #c3fb34; outline-offset: 3px; }
+@media (max-width: 560px) { .lp-event__copy { text-align: center; } .lp-event__more { display: none; } }

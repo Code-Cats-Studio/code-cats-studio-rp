@@ -3,11 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const KEY = 'post-login-redirect';
+// El destino caduca: quien confirma su correo horas después sigue volviendo, pero uno viejo no secuestra otro inicio de sesión
+const MAX_AGE_MS = 48 * 3600 * 1000;
 
 // Guarda a dónde volver después de iniciar sesión (por ejemplo, la inscripción a un evento).
 export function rememberRedirect(path: string) {
   try {
-    localStorage.setItem(KEY, path);
+    localStorage.setItem(KEY, JSON.stringify({ path, at: Date.now() }));
   } catch {
     // sin almacenamiento local: se vuelve al inicio normal
   }
@@ -23,11 +25,28 @@ export function clearRedirect() {
 
 export function peekRedirect(): string | null {
   try {
-    const path = localStorage.getItem(KEY);
-    return path && path.startsWith('/') && !path.startsWith('//') ? path : null;
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    let path = raw;
+    if (raw.startsWith('{')) {
+      const saved = JSON.parse(raw) as { path?: string; at?: number };
+      if (!saved.path || !saved.at || Date.now() - saved.at > MAX_AGE_MS) {
+        localStorage.removeItem(KEY);
+        return null;
+      }
+      path = saved.path;
+    }
+    return path.startsWith('/') && !path.startsWith('//') ? path : null;
   } catch {
     return null;
   }
+}
+
+// URL a la que Google y el enlace del correo devuelven a la persona. Lleva el destino dentro, así funciona
+// aunque abra el correo en otro navegador o en el celular (ahí no existe el localStorage). Debe estar
+// permitida en Supabase → Authentication → URL Configuration; si no lo está, Supabase cae en la página principal.
+export function authReturnUrl(): string {
+  return `${window.location.origin}${peekRedirect() ?? ''}`;
 }
 
 // Al detectar la sesión, lleva a la persona a la página que pidió y olvida el destino.

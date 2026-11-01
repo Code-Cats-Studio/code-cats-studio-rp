@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchPublishedCourses, type Course } from '../services/courses';
 import { setPageMeta } from '../utils/seo';
+import { getEventIntent } from '../utils/eventIntent';
 import { CountUp, useReveal } from '../components/landing/useReveal';
 import { ABOUT_POINTS, ABOUT_STATS, LINKTREE_URL, MARQUEE, PROJECTS, SOCIALS, SYMBOLS } from '../components/landing/data';
 import '../styles/landing.css';
@@ -36,6 +37,27 @@ function Marquee() {
   );
 }
 
+// Primera franja de la página principal: lleva al evento y, si la persona se quedó a medias, a terminar su inscripción
+function EventBanner() {
+  const intent = getEventIntent();
+  const copy = intent === 'pending'
+    ? { title: 'Tu inscripción a Code Cats Days sigue pendiente', text: 'Te quedaste a mitad de camino. Retómala donde la dejaste.', cta: 'Continuar mi inscripción' }
+    : intent === 'done'
+      ? { title: 'Ya estás en Code Cats Days', text: 'Mira tu Cat Pass, edita tus datos o genera tu CV.', cta: 'Ver mi Cat Pass' }
+      : { title: 'Code Cats Days · Expedition 01', text: 'Un día de charlas, comunidad y código. Gratis, con cupos limitados.', cta: 'Inscríbete gratis' };
+  return (
+    <aside className="lp-event" aria-label="Code Cats Days">
+      <img className="lp-event__cat" src="/code-cats-days/favicon-gato.png" alt="" width={44} height={44} />
+      <div className="lp-event__copy">
+        <strong>{copy.title}</strong>
+        <span>{copy.text}</span>
+      </div>
+      <Link to="/code-cats-days/inscripcion" className="lp-event__cta">{copy.cta}</Link>
+      <Link to="/code-cats-days" className="lp-event__more">Ver el evento</Link>
+    </aside>
+  );
+}
+
 export default function HomePage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -58,6 +80,8 @@ export default function HomePage() {
 
   return (
     <div className="lp" ref={rootRef}>
+      <EventBanner />
+
       {/* Hero */}
       <section className="lp-hero" aria-labelledby="lp-hero-title">
         {SYMBOLS.map((s) => (

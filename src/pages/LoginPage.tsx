@@ -188,6 +188,11 @@ export default function LoginPage() {
             : 'Una sola cuenta para tomar cursos y participar en nuestros eventos.'}
         </p>
 
+        {peekRedirect()?.startsWith('/code-cats-days') && (
+          <p className="mb-4 text-sm p-3 rounded-xl" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+            🐾 Al terminar volverás a tu inscripción de Code Cats Days.
+          </p>
+        )}
         {errorMessage && (
           <p role="alert" className="mb-4 text-sm" style={{ color: 'var(--error)' }}>{errorMessage}</p>
         )}
@@ -200,7 +205,7 @@ export default function LoginPage() {
             <ol className="grid gap-2 text-sm pl-5 list-decimal" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
               <li>Abre tu correo (revisa también <strong>spam</strong> y <strong>promociones</strong>).</li>
               <li>Pulsa el enlace para confirmar tu cuenta.</li>
-              <li>Vuelve aquí e inicia sesión. Si el enlace abrió otro navegador, no pasa nada: entra con tu correo y contraseña.</li>
+              <li>{peekRedirect() ? 'El enlace te lleva directo a tu inscripción. Si esta pestaña sigue abierta, también avanza sola.' : 'Vuelve aquí e inicia sesión.'} Si el enlace abrió otro navegador, no pasa nada: entra con tu correo y contraseña.</li>
             </ol>
             <p className="text-sm p-3 rounded-xl" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
               El correo puede tardar <strong>hasta 2 minutos</strong> en llegar. Espera antes de pedir otro: si pides muchos seguidos, los envíos se bloquean por un rato.

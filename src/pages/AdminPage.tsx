@@ -19,6 +19,7 @@ import {
 import CoursesAdmin from '../components/admin/CoursesAdmin';
 import GroupsAdmin from '../components/admin/GroupsAdmin';
 import EventsAdmin from '../components/admin/EventsAdmin';
+import EmailsAdmin from '../components/admin/EmailsAdmin';
 import StaffAdmin from '../components/admin/StaffAdmin';
 import PeopleAdmin from '../components/admin/PeopleAdmin';
 import {
@@ -292,6 +293,7 @@ export default function AdminPage() {
 
       <GroupsAdmin />
       <EventsAdmin />
+      <EmailsAdmin />
       <StaffAdmin />
       <PeopleAdmin />
     </main>

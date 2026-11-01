@@ -32,3 +32,6 @@ pnpm-debug.log*
 .cache/*
 # feedback de QA (solo para Claude)
 /observaciones/
+
+# video del tutorial (fotogramas y MP4 generados)
+video/out/

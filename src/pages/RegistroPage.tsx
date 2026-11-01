@@ -1,6 +1,6 @@
 import { useState, useEffect, useId, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { peekRedirect } from '../components/auth/PostLoginRedirect';
+import { Link, useNavigate } from 'react-router-dom';
+import { clearRedirect, peekRedirect } from '../components/auth/PostLoginRedirect';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 import { translateProfileError } from '../utils/authErrors';
@@ -30,6 +30,7 @@ interface FormData {
 export default function RegistroPage() {
   const { user, profile, isProfileComplete, isLoading, updateProfile, signInWithGoogle } =
     useAuth();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState<FormData>({
     full_name: '',
@@ -141,6 +142,12 @@ export default function RegistroPage() {
       } else {
         { setSuccessMessage('¡Perfil guardado con éxito! Ya puedes inscribirte a cualquier curso.'); toast.success('¡Perfil guardado con éxito!'); }
         setShowEditMode(false);
+        // Venía de una inscripción (p. ej. Code Cats Days): se regresa solo, sin buscar el botón
+        const back = peekRedirect();
+        if (back) {
+          clearRedirect();
+          navigate(back, { replace: true });
+        }
       }
     } catch (err) {
       const msg = err instanceof Error

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import EventAccount from '../components/event/EventAccount';
 import { clearRedirect, rememberRedirect } from '../components/auth/PostLoginRedirect';
+import { setEventIntent } from '../utils/eventIntent';
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
 import { setPageMeta } from '../utils/seo';
 import {
@@ -37,7 +38,7 @@ import {
   type MyEventRegistration,
 } from '../services/events';
 import { updateMyFullName } from '../services/account';
-import { cleanName, isHttpsUrl, isValidName } from '../utils/validation';
+import { cleanName, isHttpsUrl, isValidBirthDate, isValidName } from '../utils/validation';
 import '../styles/code-cats-days.css';
 import '../styles/ccd-inscripcion.css';
 
@@ -73,7 +74,7 @@ const fmt = (iso: string) =>
 
 export default function CodeCatsDaysInscripcionPage() {
   const navigate = useNavigate();
-  const { user, profile, isLoading: authLoading, isProfileComplete, refreshProfile } = useAuth();
+  const { user, profile, isLoading: authLoading, isProfileComplete, refreshProfile, updateProfile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [event, setEvent] = useState<EventInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +84,9 @@ export default function CodeCatsDaysInscripcionPage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  // Datos que faltan en la cuenta (una sola vez): se piden aquí mismo para no sacar a la persona de la inscripción
+  const [birthDate, setBirthDate] = useState('');
+  const [terms, setTerms] = useState(false);
 
   useEffect(() => {
     setPageMeta('Inscripción · Code Cats Days', 'Inscríbete a Code Cats Days y consigue tu Cat Pass. Gratis, en el Auditorio de Informática de la UMSA.');
@@ -102,6 +106,12 @@ export default function CodeCatsDaysInscripcionPage() {
   useEffect(() => {
     if (!authLoading && user && isProfileComplete) clearRedirect();
   }, [authLoading, user, isProfileComplete]);
+
+  // Marca en el navegador si falta terminar la inscripción (la página principal ofrece continuar)
+  useEffect(() => {
+    if (PREVIEW || loading || authLoading || !event) return;
+    setEventIntent(mine && mine.status !== 'cancelled' ? 'done' : 'pending');
+  }, [loading, authLoading, event, mine]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -192,6 +202,23 @@ export default function CodeCatsDaysInscripcionPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const completeAccount = async (e: FormEvent) => {
+    e.preventDefault();
+    const invalid = !isValidName(fullName) ? 'Escribe tu nombre completo (solo letras, mínimo 3 caracteres).'
+      : !birthDate || !isValidBirthDate(birthDate) ? 'Escribe una fecha de nacimiento válida.'
+      : !terms ? 'Acepta los términos y la política de privacidad para continuar.' : null;
+    if (invalid) {
+      setMessage({ type: 'error', text: invalid });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    const { error } = await updateProfile({ full_name: fullName.trim(), birth_date: birthDate, terms_accepted_at: new Date().toISOString() });
+    setBusy(false);
+    if (error) setMessage({ type: 'error', text: error.message });
+    else setMessage({ type: 'ok', text: '¡Cuenta lista! Ahora arma tu Cat Pass.' });
   };
 
   const cancel = async () => {
@@ -448,11 +475,23 @@ export default function CodeCatsDaysInscripcionPage() {
                 </div>
               </div>
             ) : !isProfileComplete ? (
-              <div className="ccd-panel">
-                <h2>Completa tu perfil primero</h2>
-                <p className="ccd-note">Solo falta tu fecha de nacimiento y aceptar los términos, una sola vez. Al terminar vuelves aquí.</p>
-                <div className="ccd-actions"><button type="button" className="ccd-btn ccd-btn--blue" onClick={() => goLogin('/perfil')}>Completar mi perfil</button></div>
-              </div>
+              <form className="ccd-panel ccd-form" onSubmit={(e) => void completeAccount(e)} noValidate>
+                <h2>Último paso de tu cuenta</h2>
+                <p className="ccd-note">Solo la primera vez. Al guardar sigues directo con tu Cat Pass, sin salir de esta página.</p>
+                <div className="ccd-row2">
+                  <label className="ccd-field"><span>Nombre completo</span>
+                    <input type="text" maxLength={100} autoComplete="name" value={fullName} onChange={(e) => setFullName(cleanName(e.target.value))} />
+                  </label>
+                  <label className="ccd-field"><span>Fecha de nacimiento</span>
+                    <input type="date" autoComplete="bday" value={birthDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setBirthDate(e.target.value)} />
+                  </label>
+                </div>
+                <label className="ccd-check">
+                  <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+                  <span>Acepto los <Link to="/terminos" target="_blank">términos</Link> y la <Link to="/privacidad" target="_blank">política de privacidad</Link>.</span>
+                </label>
+                <div className="ccd-actions"><button type="submit" className="ccd-btn ccd-btn--blue" disabled={busy}>{busy ? 'Guardando…' : 'Guardar y continuar'}</button></div>
+              </form>
             ) : active && !editing ? (
               <>
                 <article className="ccd-pass-card" aria-label="Tu Cat Pass">

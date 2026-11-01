@@ -9,6 +9,7 @@ import {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { authReturnUrl } from '../components/auth/PostLoginRedirect';
 import type {
   AppRole,
   AuthContextType,
@@ -108,7 +109,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: authReturnUrl(),
         },
       });
 
@@ -142,7 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         password,
         options: {
           data: { full_name: fullName.trim() },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: authReturnUrl(),
         },
       });
       if (error) return { error: new Error(error.message), needsConfirmation: false };
