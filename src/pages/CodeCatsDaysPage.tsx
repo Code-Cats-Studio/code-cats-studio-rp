@@ -20,11 +20,14 @@ const WORDS = ['Explora', 'Construye', 'Comparte'];
 const TIERS = [
   { name: 'Expedition Lead', kind: 'Sponsors ORO', sponsors: [] as string[], formUrl: 'https://forms.gle/Z1xtK6YAQQ8yiq7L7' },
   { name: 'Pathfinder', kind: 'Sponsor PLATA', sponsors: ['TCA La Paz'], formUrl: 'https://forms.gle/PP1veypSuDEP2o9b9' },
-  { name: 'Trailblazer', kind: 'Sponsor BRONCE', sponsors: [] as string[], formUrl: 'https://forms.gle/yQTiaJu7tdcG87d36' },
+  { name: 'Trailblazer', kind: 'Sponsor BRONCE', sponsors: ['Twintro', 'CBA La Paz', 'La Otra Red'], formUrl: 'https://forms.gle/yQTiaJu7tdcG87d36' },
 ];
 // redes.json has no logo field, so logos are matched by organization name.
 const LOGOS: Record<string, string> = {
   'TCA La Paz': '/sponsors/logo_sponsor_academy.png',
+  Twintro: '/sponsors/twintro-8.png',
+  'CBA La Paz': '/sponsors/CBA-8.png',
+  'La Otra Red': '/sponsors/laotrared.png',
   'Women Techmakers El Alto': '/aliadas/wtm_logo.png',
   'R00thouse - Hacklab La Paz': '/aliadas/root_logo.png',
   'Microsoft Education Hub - MEH': '/aliadas/meh_logo.png',
@@ -37,6 +40,7 @@ const SOCIALS = [
   { key: 'facebook', label: 'Facebook' },
   { key: 'tiktok', label: 'TikTok' },
   { key: 'linkedin', label: 'LinkedIn' },
+  { key: 'whatsapp', label: 'WhatsApp' },
 ] as const;
 type Org = { nombre: string; redes: Partial<Record<(typeof SOCIALS)[number]['key'], string>> };
 const SPONSOR_MESSAGE = '¡Hola Code Cats Studio! Quiero que nuestra organización sea sponsor de Code Cats Days 2026 (Expedition 01). ¿Me cuentan más sobre los niveles Expedition Lead, Pathfinder y Trailblazer?';
@@ -239,7 +243,7 @@ export default function CodeCatsDaysPage() {
                     {tier.sponsors.length === 0 && <p className="ccd-tier__empty">Espacio disponible</p>}
                     {tier.sponsors.map((nombre) => {
                       const org = redes.Sponsors.find((item) => item.nombre === nombre);
-                      return org ? <OrgLogo key={nombre} org={org} menuId={`redes-${index}`} /> : null;
+                      return org ? <OrgLogo key={nombre} org={org} menuId={`redes-${index}-${nombre.replace(/\s+/g, '-')}`} /> : null;
                     })}
                   </div>
                 </article>

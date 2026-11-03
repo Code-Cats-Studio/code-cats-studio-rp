@@ -290,8 +290,8 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
 
       {isTeacher && (
         <p className="mt-3 text-sm p-3 rounded-xl" style={{ background: 'var(--bg-lime-soft)', border: '1px solid var(--border)' }}>
-          Como docente principal puedes editar los textos, los módulos y las lecciones. El enlace, el nivel, la publicación y las
-          ediciones los administra un administrador.
+          Como docente principal puedes editar todo el curso: textos, tema, módulos, lecciones y publicación. El enlace, el nivel y
+          las fechas y cupos de las ediciones los administra un administrador.
         </p>
       )}
 
@@ -312,7 +312,7 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
         <div className="grid sm:grid-cols-3 gap-4">
           <Field label="Nivel"><select className={field} value={form.level} disabled={isTeacher} onChange={(e) => set('level', e.target.value)}>{LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}</select></Field>
           <Field label="Tema">
-            <select className={field} value={form.topic_id} disabled={isTeacher} onChange={(e) => set('topic_id', e.target.value)}>
+            <select className={field} value={form.topic_id} onChange={(e) => set('topic_id', e.target.value)}>
               <option value="">Sin tema</option>
               {topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
@@ -374,12 +374,10 @@ export default function CourseEditorPage({ mode = 'admin' }: { mode?: 'admin' | 
       {/* Barra de guardado */}
       <div className="fixed bottom-0 inset-x-0 z-30 px-4 sm:px-6 py-3" style={{ background: 'rgba(255,255,255,0.95)', borderTop: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}>
         <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-4">
-          {!isTeacher && (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.is_published} onChange={(e) => set('is_published', e.target.checked)} />
-              Publicado (aparece en el catálogo)
-            </label>
-          )}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.is_published} onChange={(e) => set('is_published', e.target.checked)} />
+            Publicado (aparece en el catálogo)
+          </label>
           <button type="button" disabled={busy} className="px-5 py-2 rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50" style={primary} onClick={() => void handleSave()}>
             {busy ? 'Guardando…' : 'Guardar curso'}
           </button>

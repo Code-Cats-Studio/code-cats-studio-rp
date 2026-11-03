@@ -20,6 +20,7 @@ import {
 import SchedulePicker from '../components/course/SchedulePicker';
 import { enrollWithPreference } from '../services/schedules';
 import { fetchMyEnrollmentRequest, isOfferingTeam, requestEnrollment, type RequestStatus } from '../services/enrollmentRequests';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { setPageMeta } from '../utils/seo';
 import { useToast } from '../context/ToastContext';
@@ -59,6 +60,8 @@ export default function CoursePage() {
   const [preferredGroup, setPreferredGroup] = useState<string | null>(null);
   // Docentes y admins: equipo de la edición y estado de su solicitud para cursar
   const [isTeam, setIsTeam] = useState(false);
+  // Docente principal de alguna edición de este curso (o admin): ve accesos para editarlo
+  const [isCourseLead, setIsCourseLead] = useState(false);
   const [myRequest, setMyRequest] = useState<RequestStatus | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [isRequesting, setIsRequesting] = useState(false);
@@ -85,6 +88,24 @@ export default function CoursePage() {
   const sections = course?.source === 'db' ? dbSections : localSections.length > 0 ? localSections : dbSections;
 
   // 1. Cargar curso y oferta activa
+  useEffect(() => {
+    setIsCourseLead(false);
+    if (!user || !isStaff || !course?.id) return;
+    if (roles.includes('admin')) {
+      setIsCourseLead(true);
+      return;
+    }
+    let active = true;
+    void supabase
+      .from('offering_staff')
+      .select('offering_id, course_offerings!inner(course_id)', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('staff_role', 'lead')
+      .eq('course_offerings.course_id', course.id)
+      .then(({ count }) => { if (active) setIsCourseLead((count ?? 0) > 0); });
+    return () => { active = false; };
+  }, [user, isStaff, roles, course?.id]);
+
   useEffect(() => {
     if (!courseSlug) return;
 
@@ -351,6 +372,16 @@ export default function CoursePage() {
                 </span>
               )}
             </div>
+
+            {isCourseLead && course?.id && (
+              <p className="mb-3 flex flex-wrap items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: 'var(--bg-lime-soft)', border: '1px solid var(--border)' }}>
+                  {roles.includes('admin') ? 'Vista de administración' : 'Eres docente principal de este curso'}
+                </span>
+                <Link to={roles.includes('admin') ? `/admin/cursos/${course.id}` : `/docente/cursos/${course.id}`} className="font-semibold no-underline" style={{ color: 'var(--azul-gatuno)' }}>Editar contenido</Link>
+                {!roles.includes('admin') && <Link to="/docente?tab=cursos" className="font-semibold no-underline" style={{ color: 'var(--azul-gatuno)' }}>Gestionar edición</Link>}
+              </p>
+            )}
 
             <h1
               style={{

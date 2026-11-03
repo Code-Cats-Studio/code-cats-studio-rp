@@ -27,7 +27,7 @@ type DocenteTab = 'asistencia' | 'roster' | 'calificaciones' | 'clases' | 'curso
 
 export default function DocentePage() {
   const { user, roles } = useAuth();
-  const [activeTab, setActiveTab] = useState<DocenteTab>('asistencia');
+  const [activeTab, setActiveTab] = useState<DocenteTab>(() => (new URLSearchParams(window.location.search).get('tab') === 'cursos' ? 'cursos' : 'asistencia'));
 
   // Listas para elegir (así el docente nunca pega IDs)
   const [offeringChoices, setOfferingChoices] = useState<OfferingChoice[]>([]);

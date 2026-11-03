@@ -58,6 +58,26 @@
 				"instagram": "https://www.instagram.com/tca.lapaz/",
 				"tiktok": "https://www.tiktok.com/@tca_lapaz?lang=es"
 			}
+		},
+		{
+			"nombre": "Twintro",
+			"redes": {
+				"instagram": "https://www.instagram.com/mytwintro/"
+			}
+		},
+		{
+			"nombre": "CBA La Paz",
+			"redes": {
+				"instagram": "https://www.instagram.com/cba_la_paz/",
+				"facebook": "https://www.facebook.com/profile.php?id=100064548645618",
+				"tiktok": "https://www.tiktok.com/@cbalapaz?lang=es"
+			}
+		},
+		{
+			"nombre": "La Otra Red",
+			"redes": {
+				"whatsapp": "https://wa.me/59178855774?text=Hola%2C%20quisiera%20conocer%20sobre%20La%20Otra%20Red%20y%20sus%20servicios."
+			}
 		}
 	]
 }
