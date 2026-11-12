@@ -57,7 +57,8 @@ export default function CoursePage() {
   // Estados de inscripción
   const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
   const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
-  const [preferredGroup, setPreferredGroup] = useState<string | null>(null);
+  const [preferredGroup, setPreferredGroup] = useState<string | null | undefined>(undefined);
+  const [scheduleOptions, setScheduleOptions] = useState(0);
   // Docentes y admins: equipo de la edición y estado de su solicitud para cursar
   const [isTeam, setIsTeam] = useState(false);
   // Docente principal de alguna edición de este curso (o admin): ve accesos para editarlo
@@ -242,10 +243,15 @@ export default function CoursePage() {
       return;
     }
 
+    if (scheduleOptions > 0 && preferredGroup === undefined) {
+      setFeedbackMessage({ type: 'error', text: 'Elige un grupo y horario (o «Cualquier horario») antes de inscribirte.' });
+      return;
+    }
+
     setIsEnrolling(true);
 
     try {
-      const response = await enrollWithPreference(activeOffering.id, preferredGroup);
+      const response = await enrollWithPreference(activeOffering.id, preferredGroup ?? null);
 
       if (response.error) {
         // Si el backend rechaza por perfil incompleto
@@ -379,7 +385,7 @@ export default function CoursePage() {
                   {roles.includes('admin') ? 'Vista de administración' : 'Eres docente principal de este curso'}
                 </span>
                 <Link to={roles.includes('admin') ? `/admin/cursos/${course.id}` : `/docente/cursos/${course.id}`} className="font-semibold no-underline" style={{ color: 'var(--azul-gatuno)' }}>Editar contenido</Link>
-                {!roles.includes('admin') && <Link to="/docente?tab=cursos" className="font-semibold no-underline" style={{ color: 'var(--azul-gatuno)' }}>Gestionar edición</Link>}
+                {!roles.includes('admin') && <Link to="/docente" className="font-semibold no-underline" style={{ color: "var(--azul-gatuno)" }}>Gestionar curso</Link>}
               </p>
             )}
 
@@ -579,7 +585,7 @@ export default function CoursePage() {
               <div className="flex items-center gap-3 flex-wrap">
                 {user && activeOffering && !blockedReason && (
                   <div className="w-full">
-                    <SchedulePicker offeringId={activeOffering.id} value={preferredGroup} onChange={setPreferredGroup} />
+                    <SchedulePicker offeringId={activeOffering.id} value={preferredGroup} onChange={(g) => { setPreferredGroup(g); setFeedbackMessage(null); }} onLoaded={setScheduleOptions} />
                   </div>
                 )}
                 {blockedReason && (

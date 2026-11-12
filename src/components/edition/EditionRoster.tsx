@@ -3,9 +3,10 @@ import { assignStudentToGroup, fetchEditionGroups, removeStudent, type EditionGr
 import { fetchTeacherRoster, type RosterStudent } from '../../services/teacher';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useLiveRefresh } from '../../hooks/useLiveRefresh';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const btn = 'pn-btn pn-btn-sm';
 const STATUS: Record<string, string> = { active: 'Activo', waitlisted: 'En espera', completed: 'Aprobado', failed: 'No aprobado', dropped: 'Baja', pending_payment: 'Pago pendiente' };
 
 // Estudiantes de la edición con su avance y asistencia. Solo el admin cambia grupos o da de baja.
@@ -30,6 +31,7 @@ export default function EditionRoster({ offeringId }: { offeringId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  useLiveRefresh(['enrollments', 'attendance'], () => void load());
 
   const changeGroup = async (row: RosterStudent, groupId: string) => {
     const error = await assignStudentToGroup(row.enrollment_id, groupId || null);

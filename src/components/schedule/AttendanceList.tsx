@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../context/ToastContext';
+import { useLiveRefresh } from '../../hooks/useLiveRefresh';
 
 interface Row {
   enrollment_id: string;
@@ -14,6 +15,7 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const dirty = useRef(false); // marcas sin guardar: la actualización en vivo no debe pisarlas
 
   const load = useCallback(async () => {
     if (!sessionId) {
@@ -23,6 +25,7 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
     setLoading(true);
     const { data, error } = await supabase.rpc('get_session_attendance', { p_session: sessionId });
     setRows(error || !Array.isArray(data) ? [] : (data as Row[]));
+    dirty.current = false;
     if (error) toast.error(error.message);
     setLoading(false);
   }, [sessionId]);
@@ -31,8 +34,16 @@ export default function AttendanceList({ sessionId }: { sessionId: string }) {
     void load();
   }, [load]);
 
-  const toggle = (id: string) => setRows((r) => r.map((x) => (x.enrollment_id === id ? { ...x, present: !x.present } : x)));
-  const setAll = (present: boolean) => setRows((r) => r.map((x) => ({ ...x, present })));
+  useLiveRefresh(['attendance', 'enrollments'], () => { if (!dirty.current) void load(); }, Boolean(sessionId));
+
+  const toggle = (id: string) => {
+    dirty.current = true;
+    setRows((r) => r.map((x) => (x.enrollment_id === id ? { ...x, present: !x.present } : x)));
+  };
+  const setAll = (present: boolean) => {
+    dirty.current = true;
+    setRows((r) => r.map((x) => ({ ...x, present })));
+  };
 
   const save = async () => {
     setBusy(true);

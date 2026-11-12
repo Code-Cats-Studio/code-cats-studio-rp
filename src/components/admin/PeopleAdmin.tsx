@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchAdminOfferings, fetchPeople, type AdminOffering, type Person, type PersonRole } from '../../services/admin';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const field = 'px-2 py-1.5 rounded border border-gray-300 text-sm';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const field = 'w-full';
 
 const TABS: { id: PersonRole | 'all'; label: string }[] = [
   { id: 'all', label: 'Todos' },

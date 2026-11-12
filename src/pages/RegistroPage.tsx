@@ -16,6 +16,7 @@ import {
 } from '../utils/validation';
 import type { UserProfileUpdateInput } from '../types/auth';
 import TeacherApplication from '../components/account/TeacherApplication';
+import TeacherProfileCard from '../components/account/TeacherProfileCard';
 import { useToast } from '../context/ToastContext';
 
 interface FormData {
@@ -656,6 +657,7 @@ export default function RegistroPage() {
           </div>
         </form>
         {isProfileComplete && <TeacherApplication />}
+        <TeacherProfileCard />
       </section>
     </main>
   );

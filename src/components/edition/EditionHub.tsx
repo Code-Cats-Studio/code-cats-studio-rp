@@ -36,17 +36,15 @@ export default function EditionHub({ offeringId, courseTitle, canManageTeam }: {
   const current = tabs.find((t) => t.id === tab) ? tab : tabs[0]?.id;
 
   return (
-    <div className="mt-3 rounded-xl p-4" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+    <div className="pn-scope">
       {member === false && (
-        <p className="mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="pn-callout pn-callout-warn mb-3">
           Para dar clases, pasar lista o ver a los estudiantes de esta edición, primero agrégate al equipo docente (como principal o de apoyo) en «Docentes y horarios».
         </p>
       )}
-      <div role="tablist" aria-label="Gestión de la edición" className="flex flex-wrap gap-2 mb-4">
+      <div role="tablist" aria-label="Gestión de la edición" className="pn-tabs">
         {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={current === t.id} onClick={() => setTab(t.id)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
-            style={{ background: current === t.id ? 'var(--azul-gatuno)' : 'var(--bg-primary)', color: current === t.id ? '#fff' : 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+          <button key={t.id} type="button" role="tab" aria-selected={current === t.id} onClick={() => setTab(t.id)} className="pn-tab">
             {t.label}
           </button>
         ))}

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../../context/ToastContext';
 import { onlyDigits } from '../../utils/validation';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
 const SETTING_KEY = 'daily_email_limit';
 const FALLBACK_LIMIT = 90; // mismo valor que usa process-emails si el ajuste no existe
 const MAX_LIMIT = 100000;

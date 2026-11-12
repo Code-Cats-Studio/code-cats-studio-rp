@@ -11,8 +11,8 @@ import {
 } from '../../services/admin';
 import { useToast } from '../../context/ToastContext';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const btn = 'pn-btn pn-btn-sm';
 
 export default function StaffAdmin() {
   const { user } = useAuth();

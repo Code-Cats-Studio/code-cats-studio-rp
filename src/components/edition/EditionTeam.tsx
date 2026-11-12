@@ -5,9 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import GroupsAdmin from '../admin/GroupsAdmin';
 import { useToast } from '../../context/ToastContext';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
-const field = 'px-2 py-1.5 rounded border border-gray-300 text-sm';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const btn = 'pn-btn pn-btn-sm';
+const field = 'w-full';
 
 // Quiénes dictan la edición (docente principal y apoyo) y los grupos con el horario de cada uno.
 export default function EditionTeam({ offeringId, onChange }: { offeringId: string; onChange?: () => void }) {

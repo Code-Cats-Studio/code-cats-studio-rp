@@ -13,10 +13,11 @@ import {
   type MaterialRow,
 } from '../../services/courseAdmin';
 import { useToast } from '../../context/ToastContext';
+import { useLiveRefresh } from '../../hooks/useLiveRefresh';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const field = 'w-full px-2 py-1.5 rounded border border-gray-300 text-sm';
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const field = 'w-full';
+const btn = 'pn-btn pn-btn-sm';
 const KINDS: { value: MaterialRow['kind']; label: string }[] = [
   { value: 'drive', label: 'Google Drive' },
   { value: 'link', label: 'Enlace' },
@@ -25,7 +26,8 @@ const KINDS: { value: MaterialRow['kind']; label: string }[] = [
 ];
 
 // Tareas (que los estudiantes entregan) y material (enlaces a Drive u otros) de la edición.
-export default function EditionWork({ offeringId }: { offeringId: string }) {
+// `ownGroupIds` = docente de apoyo: crea y borra tareas y material solo de sus grupos.
+export default function EditionWork({ offeringId, ownGroupIds }: { offeringId: string; ownGroupIds?: string[] }) {
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
   const [groups, setGroups] = useState<EditionGroup[]>([]);
@@ -54,13 +56,24 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  useLiveRefresh(['assignments', 'materials', 'offering_groups'], () => void load());
 
+  const assistant = ownGroupIds !== undefined;
+  const selectable = assistant ? groups.filter((g) => ownGroupIds.includes(g.id)) : groups;
+  const canEdit = (groupId: string | null) => !assistant || (groupId !== null && ownGroupIds.includes(groupId));
+  const firstOwn = selectable[0]?.id ?? '';
+  useEffect(() => {
+    if (assistant) {
+      setAGroup((g) => g || firstOwn);
+      setMGroup((g) => g || firstOwn);
+    }
+  }, [assistant, firstOwn]);
   const groupName = (id: string | null) => (id ? groups.find((g) => g.id === id)?.name ?? 'Grupo' : 'Toda la edición');
 
   const addAssignment = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const error = await createAssignment(offeringId, { title: aTitle, description: aDesc, dueLocal: aDue, maxScore: aMax, weight: aWeight, groupId: aGroup || null });
+    const error = await createAssignment(offeringId, { title: aTitle, description: aDesc, dueLocal: aDue, maxScore: aMax, weight: aWeight, groupId: (assistant ? aGroup || firstOwn : aGroup) || null });
     toast.result(error, 'Tarea creada. Los estudiantes la ven en «Tareas y material».');
     if (!error) { setATitle(''); setADesc(''); setADue(''); }
     await load();
@@ -70,7 +83,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
   const addMaterial = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const error = await createMaterial(offeringId, { title: mTitle, kind: mKind, url: mUrl, groupId: mGroup || null });
+    const error = await createMaterial(offeringId, { title: mTitle, kind: mKind, url: mUrl, groupId: (assistant ? mGroup || firstOwn : mGroup) || null });
     toast.result(error, 'Material agregado.');
     if (!error) { setMTitle(''); setMUrl(''); }
     await load();
@@ -87,8 +100,8 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
             <label className="grid gap-1 sm:col-span-2">Título<input className={field} required maxLength={150} value={aTitle} onChange={(e) => setATitle(e.target.value)} /></label>
             <label className="grid gap-1">Para
               <select className={field} value={aGroup} onChange={(e) => setAGroup(e.target.value)}>
-                <option value="">Toda la edición</option>
-                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {!assistant && <option value="">Toda la edición</option>}
+                {selectable.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </label>
           </div>
@@ -98,7 +111,7 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
             <label className="grid gap-1">Puntaje máximo<input type="number" min={1} max={1000} step={1} className={field} value={aMax} onChange={(e) => setAMax(clampInt(e.target.value, 1, 1000, 100))} /></label>
             <label className="grid gap-1">Peso en la nota final<input type="number" min={0} max={100} step="0.5" className={field} value={aWeight} onChange={(e) => setAWeight(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} /></label>
           </div>
-          <div><button type="submit" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Crear tarea</button></div>
+          <div><button type="submit" disabled={busy} className="pn-btn pn-btn-primary">Crear tarea</button></div>
         </form>
         <ul className="mt-3 grid gap-2">
           {assignments.length === 0 && <li className="text-sm" style={{ color: 'var(--text-muted)' }}>Aún no hay tareas.</li>}
@@ -109,10 +122,10 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
                   {groupName(a.group_id)} · {a.max_score} pts · peso {a.weight}{a.due_at ? ` · entrega ${new Date(a.due_at).toLocaleString('es-BO', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/La_Paz' })}` : ''}
                 </span>
               </span>
-              <button type="button" className={btn} style={{ border: '1px solid var(--border)' }}
+              {canEdit(a.group_id) && <button type="button" className={`${btn} pn-btn-danger`}
                 onClick={() => window.confirm('¿Eliminar la tarea? También se borran las entregas.') && void deleteAssignment(a.id).then((e) => { toast.result(e, 'Tarea eliminada.'); return load(); })}>
                 Eliminar
-              </button>
+              </button>}
             </li>
           ))}
         </ul>
@@ -130,13 +143,13 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
             </label>
             <label className="grid gap-1">Para
               <select className={field} value={mGroup} onChange={(e) => setMGroup(e.target.value)}>
-                <option value="">Toda la edición</option>
-                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {!assistant && <option value="">Toda la edición</option>}
+                {selectable.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </label>
           </div>
           <label className="grid gap-1">Enlace (Drive, GitHub…)<input className={field} required value={mUrl} placeholder="https://drive.google.com/…" onChange={(e) => setMUrl(e.target.value)} /></label>
-          <div><button type="submit" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Agregar material</button></div>
+          <div><button type="submit" disabled={busy} className="pn-btn pn-btn-primary">Agregar material</button></div>
         </form>
         <ul className="mt-3 grid gap-2">
           {materials.length === 0 && <li className="text-sm" style={{ color: 'var(--text-muted)' }}>Aún no hay material.</li>}
@@ -145,10 +158,10 @@ export default function EditionWork({ offeringId }: { offeringId: string }) {
               <span className="text-sm min-w-0"><strong>{m.title}</strong> <span style={{ color: 'var(--text-muted)' }}>· {groupName(m.group_id)}</span>
                 <a href={m.url} target="_blank" rel="noopener noreferrer" className="block text-xs truncate" style={{ color: 'var(--azul-gatuno)' }}>{m.url}</a>
               </span>
-              <button type="button" className={btn} style={{ border: '1px solid var(--border)' }}
+              {canEdit(m.group_id) && <button type="button" className={`${btn} pn-btn-danger`}
                 onClick={() => window.confirm('¿Quitar este material?') && void deleteMaterial(m.id).then((e) => { toast.result(e, 'Material quitado.'); return load(); })}>
                 Quitar
-              </button>
+              </button>}
             </li>
           ))}
         </ul>

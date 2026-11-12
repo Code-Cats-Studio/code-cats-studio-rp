@@ -10,15 +10,17 @@ import { fetchEditionGroups, type EditionGroup } from '../../services/courseAdmi
 import AttendanceList from '../schedule/AttendanceList';
 import SessionTimeFields, { useSessionTiming } from '../schedule/SessionTimeFields';
 import { useToast } from '../../context/ToastContext';
+import { useLiveRefresh } from '../../hooks/useLiveRefresh';
 import { splitScheduleNote } from '../../utils/schedule';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const field = 'w-full px-2 py-1.5 rounded border border-gray-300 text-sm';
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const field = 'w-full';
+const btn = 'pn-btn pn-btn-sm';
 const fmt = (iso: string) => new Date(iso).toLocaleString('es-BO', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/La_Paz' });
 
 // Clases de la edición (de cualquier grupo o de todos) y su lista de asistencia.
-export default function EditionSessions({ offeringId, courseTitle }: { offeringId: string; courseTitle: string }) {
+// `ownGroupIds` = docente de apoyo: solo programa y borra las clases de sus grupos (la base de datos lo exige igual).
+export default function EditionSessions({ offeringId, courseTitle, ownGroupIds }: { offeringId: string; courseTitle: string; ownGroupIds?: string[] }) {
   const [sessions, setSessions] = useState<EditionSession[]>([]);
   const [groups, setGroups] = useState<EditionGroup[]>([]);
   const [groupId, setGroupId] = useState('');
@@ -28,6 +30,13 @@ export default function EditionSessions({ offeringId, courseTitle }: { offeringI
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const timing = useSessionTiming(groups.find((g) => g.id === groupId));
+  const assistant = ownGroupIds !== undefined;
+  const selectable = assistant ? groups.filter((g) => ownGroupIds.includes(g.id)) : groups;
+  const canEdit = (s: EditionSession) => !assistant || (s.group_id !== null && ownGroupIds.includes(s.group_id));
+
+  useEffect(() => {
+    if (assistant && !selectable.some((g) => g.id === groupId)) setGroupId(selectable[0]?.id ?? '');
+  }, [assistant, selectable, groupId]);
 
   const load = useCallback(async () => {
     const [s, g] = await Promise.all([fetchEditionSessions(offeringId), fetchEditionGroups(offeringId)]);
@@ -38,6 +47,7 @@ export default function EditionSessions({ offeringId, courseTitle }: { offeringI
   useEffect(() => {
     void load();
   }, [load]);
+  useLiveRefresh(['live_sessions', 'offering_groups'], () => void load());
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -69,8 +79,8 @@ export default function EditionSessions({ offeringId, courseTitle }: { offeringI
           </label>
           <label className="grid gap-1">Para
             <select className={field} value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-              <option value="">Toda la edición</option>
-              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}{g.schedule_label ? ` · ${g.schedule_label}` : ''}</option>)}
+              {!assistant && <option value="">Toda la edición</option>}
+              {selectable.map((g) => <option key={g.id} value={g.id}>{g.name}{g.schedule_label ? ` · ${g.schedule_label}` : ''}</option>)}
             </select>
           </label>
         </div>
@@ -78,7 +88,7 @@ export default function EditionSessions({ offeringId, courseTitle }: { offeringI
         <label className="grid gap-1">Enlace (Meet, Zoom, Teams…)
           <input className={field} value={meet} placeholder="Vacío = el del grupo" onChange={(e) => setMeet(e.target.value)} />
         </label>
-        <div><button type="submit" disabled={busy} className={btn} style={{ background: 'var(--azul-gatuno)', color: '#fff' }}>Programar y avisar por correo</button></div>
+        <div><button type="submit" disabled={busy || (assistant && !groupId)} className="pn-btn pn-btn-primary">Programar y avisar por correo</button></div>
       </form>
 
       <ul className="grid gap-2">
@@ -98,7 +108,7 @@ export default function EditionSessions({ offeringId, courseTitle }: { offeringI
                     {openAttendance === s.id ? 'Ocultar asistencia' : 'Asistencia'}
                   </button>
                   <a href={buildGoogleCalendarUrl(s, courseTitle)} target="_blank" rel="noopener noreferrer" className={btn} style={{ border: '1px solid var(--border)' }}>Calendario</a>
-                  <button type="button" className={btn} style={{ border: '1px solid var(--border)' }} onClick={() => void remove(s)}>Eliminar</button>
+                  {canEdit(s) && <button type="button" className={`${btn} pn-btn-danger`} onClick={() => void remove(s)}>Eliminar</button>}
                 </span>
               </div>
               {openAttendance === s.id && <AttendanceList sessionId={s.id} />}

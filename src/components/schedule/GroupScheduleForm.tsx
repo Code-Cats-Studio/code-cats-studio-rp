@@ -2,8 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { WEEKDAYS, saveGroupSchedule, type TeacherGroup } from '../../services/schedules';
 import { useToast } from '../../context/ToastContext';
 
-const field = 'w-full px-2 py-1.5 rounded border border-gray-300';
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50';
+const field = 'w-full';
+const btn = 'pn-btn pn-btn-sm';
 
 // Horario fijo del grupo (días, hora y enlace de Meet). Lo ven los estudiantes al inscribirse.
 export default function GroupScheduleForm({ group, onSaved }: { group: TeacherGroup; onSaved: () => void }) {

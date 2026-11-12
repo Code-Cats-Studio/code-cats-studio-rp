@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { WEEKDAYS } from '../../services/schedules';
 import { SPECIAL_REASON_MAX, SPECIAL_REASON_MIN, nextDateForWeekdays, weekdayOfDate } from '../../utils/schedule';
 
-const field = 'w-full px-2 py-1.5 rounded border border-gray-300 text-sm';
+const field = 'w-full';
 
 export interface GroupTiming {
   id: string;

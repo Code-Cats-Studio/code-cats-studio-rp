@@ -14,7 +14,8 @@ import {
 } from '../services/account';
 import CheckinForm from '../components/course/CheckinForm';
 import { buildGoogleCalendarUrl } from '../services/liveSessions';
-import { fetchMyOfferings, fetchMyUpcomingClasses, type OfferingChoice, type UpcomingClass } from '../services/schedules';
+import { daysLabel, fetchMyGroups, fetchMyOfferings, fetchMyUpcomingClasses, timeRange, type MyGroup, type OfferingChoice, type UpcomingClass } from '../services/schedules';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { setPageMeta } from '../utils/seo';
 import { useToast } from '../context/ToastContext';
 
@@ -34,6 +35,7 @@ export default function MisCursosPage() {
   const [progress, setProgress] = useState<Record<string, MyProgress | null>>({});
   const [certificates, setCertificates] = useState<MyCertificate[]>([]);
   const [classes, setClasses] = useState<UpcomingClass[]>([]);
+  const [groups, setGroups] = useState<Record<string, MyGroup | null>>({});
   const [loading, setLoading] = useState(true);
   const toast = useToast();
 
@@ -43,11 +45,13 @@ export default function MisCursosPage() {
 
   const load = useCallback(async (userId: string) => {
     setLoading(true);
-    const [list, certs, upcoming] = await Promise.all([
+    const [list, certs, upcoming, myGroups] = await Promise.all([
       fetchMyEnrollments(userId),
       fetchMyCertificates(),
       fetchMyUpcomingClasses(),
+      fetchMyGroups(userId),
     ]);
+    setGroups(myGroups);
     setEnrollments(list);
     setCertificates(certs);
     setClasses(upcoming);
@@ -70,6 +74,9 @@ export default function MisCursosPage() {
     if (user && isStaff) void fetchMyOfferings(user.id, false).then(setTeaching);
     else setTeaching([]);
   }, [user, isStaff]);
+
+  // si el docente cambia tu grupo, tu horario o programa una clase, esta pantalla se actualiza sola
+  useLiveRefresh(['enrollments', 'offering_groups', 'live_sessions'], () => { if (user) void load(user.id); }, Boolean(user));
 
   if (isLoading) return null;
   if (!user) return <Navigate to="/login" replace />;
@@ -198,6 +205,25 @@ export default function MisCursosPage() {
                     {STATUS_LABEL[e.status]}
                   </span>
                 </div>
+
+                {e.offering && (e.status === 'active' || e.status === 'pending_payment') && (
+                  <div className="mt-3 p-3 rounded-xl text-sm" style={{ background: 'var(--bg-accent-soft)', border: '1px solid #C9CCFF' }}>
+                    {groups[e.offering.id] ? (
+                      <>
+                        <p className="m-0 font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>Tu grupo: {groups[e.offering.id]!.name}</p>
+                        <p className="m-0" style={{ color: 'var(--text-secondary)' }}>
+                          {[daysLabel(groups[e.offering.id]!.weekdays), timeRange(groups[e.offering.id]!.start_time, groups[e.offering.id]!.end_time)].filter(Boolean).join(' · ') || groups[e.offering.id]!.schedule_label || 'Horario por definir'}
+                          {timeRange(groups[e.offering.id]!.start_time, groups[e.offering.id]!.end_time) && ' (hora de Bolivia)'}
+                        </p>
+                        {groups[e.offering.id]!.meet_url && (
+                          <a href={groups[e.offering.id]!.meet_url!} target="_blank" rel="noopener noreferrer" className="font-semibold underline" style={{ color: 'var(--azul-gatuno)' }}>Enlace de la clase</a>
+                        )}
+                      </>
+                    ) : (
+                      <p className="m-0" style={{ color: 'var(--text-secondary)' }}>Todavía no tienes grupo asignado. Te avisaremos por correo cuando lo tengas.</p>
+                    )}
+                  </div>
+                )}
 
                 {p && (
                   <dl className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">

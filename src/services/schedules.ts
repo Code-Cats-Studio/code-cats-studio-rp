@@ -55,6 +55,7 @@ export interface TeacherGroup {
   start_time: string | null;
   end_time: string | null;
   meet_url: string | null;
+  capacity: number | null;
   course_title: string;
   offering_label: string;
 }
@@ -63,7 +64,7 @@ export interface TeacherGroup {
 export async function fetchTeachingGroups(teacherId: string | null): Promise<TeacherGroup[]> {
   let query = supabase
     .from('offering_groups')
-    .select('id,name,offering_id,schedule_label,weekdays,start_time,end_time,meet_url, course_offerings(label, courses(title))')
+    .select('id,name,offering_id,schedule_label,weekdays,start_time,end_time,meet_url,capacity, course_offerings(label, courses(title))')
     .order('name');
   if (teacherId) query = query.eq('teacher_id', teacherId);
   const { data, error } = await query;
@@ -77,6 +78,7 @@ export async function fetchTeachingGroups(teacherId: string | null): Promise<Tea
     start_time: g.start_time,
     end_time: g.end_time,
     meet_url: g.meet_url,
+    capacity: g.capacity ?? null,
     course_title: g.course_offerings?.courses?.title ?? 'Curso',
     offering_label: g.course_offerings?.label ?? '',
   }));
@@ -318,3 +320,35 @@ export async function fetchMyUpcomingClasses(): Promise<UpcomingClass[]> {
     join_url: s.meet_url ?? s.offering_groups?.meet_url ?? null,
   }));
 }
+
+// Cuántos estudiantes ocupan lugar en cada grupo de una edición (lo ve el admin o el docente principal).
+export async function fetchGroupFill(offeringId: string): Promise<Record<string, number>> {
+  const { data } = await supabase.from('enrollments').select('group_id').eq('offering_id', offeringId).in('status', ['active', 'pending_payment', 'completed']).not('group_id', 'is', null);
+  const out: Record<string, number> = {};
+  for (const r of (data as { group_id: string }[] | null) ?? []) out[r.group_id] = (out[r.group_id] ?? 0) + 1;
+  return out;
+}
+
+// El grupo que me tocó en cada edición (null = todavía sin grupo).
+export interface MyGroup {
+  name: string;
+  schedule_label: string | null;
+  weekdays: number[];
+  start_time: string | null;
+  end_time: string | null;
+  meet_url: string | null;
+}
+
+export async function fetchMyGroups(userId: string): Promise<Record<string, MyGroup | null>> {
+  const { data: enr } = await supabase.from('enrollments').select('offering_id,group_id').eq('user_id', userId);
+  const rows = (enr as { offering_id: string; group_id: string | null }[] | null) ?? [];
+  const ids = rows.map((r) => r.group_id).filter((x): x is string => Boolean(x));
+  const { data: groups } = ids.length
+    ? await supabase.from('offering_groups').select('id,name,schedule_label,weekdays,start_time,end_time,meet_url').in('id', ids)
+    : { data: [] };
+  const byId = new Map(((groups as any[]) ?? []).map((g) => [g.id as string, { ...g, weekdays: g.weekdays ?? [] } as MyGroup]));
+  return Object.fromEntries(rows.map((r) => [r.offering_id, r.group_id ? byId.get(r.group_id) ?? null : null]));
+}
+
+export const daysLabel = (weekdays: number[]) => WEEKDAYS.filter((d) => weekdays.includes(d.value)).map((d) => d.label).join(' · ');
+export const timeRange = (start: string | null, end: string | null) => (start && end ? `${start.slice(0, 5)} a ${end.slice(0, 5)}` : '');

@@ -4,8 +4,8 @@ import { fetchAdminCourses, type AdminCourseRow } from '../../services/courseAdm
 import { importLocalCourse, localCoursesPending } from '../../services/courseImport';
 import { useToast } from '../../context/ToastContext';
 
-const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)' } as const;
-const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold no-underline';
+const card = { background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '0.9rem' } as const;
+const btn = 'pn-btn pn-btn-sm';
 
 // Lista de cursos con acceso al editor. Aquí se crean los cursos nuevos (sin SQL).
 export default function CoursesAdmin() {
